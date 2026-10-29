@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{% if obj %}Edit {{ label|lower }}{% else %}New {{ label|lower }}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url list_url %}">{% if label_plural %}{{ label_plural }}{% else %}{{ label }}s{% endif %}</a></li></ol></nav>
+  <h1>{% if obj %}Edit {{ obj }}{% else %}New {{ label|lower }}{% endif %}</h1>
+</div>
+<form method="post" novalidate class="card" style="max-width: 640px;">{% csrf_token %}
+  <div class="card-body">{% include "includes/form_body.html" %}
+    {% if obj %}<p class="text-muted small mb-0">Records are never deleted. Untick “Is active” to retire this {{ label|lower }}; its history is kept.</p>{% endif %}</div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-outline-secondary" href="{% url list_url %}">Cancel</a></div>
+</form>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Daily planner{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between gap-2 align-items-end mb-3">
+  <div>
+    <h1>Daily planner{% if not is_own %} · {{ owner.get_full_name|default:owner.username }}{% endif %}</h1>
+    <p class="text-muted mb-0">{{ day|date:"l d F Y" }}{% if day == today %} (today){% endif %}</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 no-print">
+    <a class="btn btn-outline-secondary" href="?date={{ prev|date:'Y-m-d' }}{% if not is_own %}&user={{ owner.pk }}{% endif %}" aria-label="Previous day"><i class="bi bi-chevron-left"></i></a>
+    <form method="get" class="d-flex gap-1">{% if not is_own %}<input type="hidden" name="user" value="{{ owner.pk }}">{% endif %}<input type="date" name="date" value="{{ day|date:'Y-m-d' }}" class="form-control" aria-label="Date" data-autosubmit></form>
+    <a class="btn btn-outline-secondary" href="?date={{ next|date:'Y-m-d' }}{% if not is_own %}&user={{ owner.pk }}{% endif %}" aria-label="Next day"><i class="bi bi-chevron-right"></i></a>
+    {% if day != today %}<a class="btn btn-outline-secondary" href="?{% if not is_own %}user={{ owner.pk }}{% endif %}">Today</a>{% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'tasks:planner_week' %}?date={{ day|date:'Y-m-d' }}"><i class="bi bi-calendar-week"></i> Week</a>
+    <a class="btn btn-primary" href="{% url 'tasks:create' %}?date={{ day|date:'Y-m-d' }}&next={{ request.get_full_path|urlencode }}"><i class="bi bi-plus-lg"></i> Plan task</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md"><div class="card metric-card h-100"><div class="card-body"><div class="metric-value text-primary">{{ stats.planned }}</div><div class="small text-muted">Planned</div></div></div></div>
+  <div class="col-6 col-md"><div class="card metric-card h-100"><div class="card-body"><div class="metric-value text-success">{{ stats.done }}</div><div class="small text-muted">Planned &amp; completed</div></div></div></div>
+  <div class="col-6 col-md"><div class="card metric-card h-100"><div class="card-body"><div class="metric-value text-warning">{{ stats.unplanned }}</div><div class="small text-muted">Unplanned</div></div></div></div>
+  <div class="col-6 col-md"><div class="card metric-card h-100"><div class="card-body"><div class="metric-value text-secondary fs-4">{{ stats.time }}</div><div class="small text-muted">Time recorded on tasks</div></div></div></div>
+  <div class="col-12 col-md"><div class="card metric-card h-100"><div class="card-body"><div class="metric-value text-secondary fs-4">{{ stats.estimated }}</div><div class="small text-muted">Estimated workload</div></div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    {% if overdue %}
+      <h2 class="h6 text-danger text-uppercase"><i class="bi bi-exclamation-triangle"></i> Overdue from earlier days ({{ overdue|length }})</h2>
+      {% for t in overdue %}{% include "tasks/_planner_item.html" with show_date=True %}{% endfor %}
+      <hr>
+    {% endif %}
+    <h2 class="h6 text-uppercase text-muted">Scheduled</h2>
+    {% for t in scheduled %}{% include "tasks/_planner_item.html" with select=is_own %}{% empty %}<p class="text-muted small">Nothing scheduled at a set time.</p>{% endfor %}
+    <h2 class="h6 text-uppercase text-muted mt-3">Any time today</h2>
+    {% for t in unscheduled %}{% include "tasks/_planner_item.html" with select=is_own %}{% empty %}<p class="text-muted small">No other tasks.</p>{% endfor %}
+  </div>
+  <div class="col-lg-4">
+    {% if is_own and unfinished %}
+    <div class="card mb-3 no-print"><div class="card-header bg-white"><i class="bi bi-box-arrow-right"></i> Carry over unfinished work</div>
+      <div class="card-body">
+        <form method="post" action="{% url 'tasks:carry_over' %}" id="carry-form" novalidate>{% csrf_token %}
+          <input type="hidden" name="day" value="{{ day|date:'Y-m-d' }}">
+          <p class="small text-muted">Tick tasks on the left, then move them with one reason. Each move is recorded.</p>
+          {% include "includes/form_body.html" with form=carry_form %}
+          <button class="btn btn-outline-primary w-100" type="submit">Move selected tasks</button>
+        </form>
+      </div></div>
+    {% endif %}
+    {% if moved_away %}
+    <div class="card mb-3"><div class="card-header bg-white">Planned for this day but moved</div><ul class="list-group list-group-flush">
+      {% for t in moved_away %}<li class="list-group-item small"><a href="{{ t.get_absolute_url }}">{{ t.number }}</a> {{ t.title }} → {{ t.planned_date|date:"D d M" }}
+        {% for c in t.schedule_changes.all %}{% if c.old_date == day %}<div class="text-muted">{{ c.reason }}</div>{% endif %}{% endfor %}</li>{% endfor %}
+    </ul></div>
+    {% endif %}
+    <div class="card no-print"><div class="card-body">
+      <a class="btn btn-outline-warning w-100 mb-2" href="{% url 'tasks:unplanned_create' %}"><i class="bi bi-lightning"></i> Record unplanned work</a>
+      <a class="btn btn-outline-secondary w-100" href="{% url 'diary:list' %}?start={{ day|date:'Y-m-d' }}&end={{ day|date:'Y-m-d' }}{% if not is_own %}&user={{ owner.pk }}{% endif %}"><i class="bi bi-journal-text"></i> Diary for this day</a>
+      <form method="get" class="mt-3"><input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+        <label class="form-label small" for="p-user">View the plan of</label>
+        <select id="p-user" name="user" class="form-select form-select-sm" data-autosubmit>
+          {% for u in officers %}<option value="{{ u.pk }}" {% if u.pk == owner.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+        </select></form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

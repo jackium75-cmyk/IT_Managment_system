@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Asset categories{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <h1>Asset categories</h1><a href="{% url 'assets:category_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>New category</a></div>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+  <thead><tr><th>Code</th><th>Name</th><th>Maintenance every</th><th>Expected life</th><th class="text-end">Assets</th><th>Status</th><th></th></tr></thead>
+  <tbody>{% for c in items %}<tr><td><span class="badge text-bg-light border">{{ c.code }}</span></td><td>{{ c.name }}</td>
+    <td>{% if c.default_maintenance_days %}{{ c.default_maintenance_days }} days{% else %}—{% endif %}</td><td>{% if c.expected_life_years %}{{ c.expected_life_years }} years{% else %}—{% endif %}</td>
+    <td class="text-end"><a href="{% url 'assets:list' %}?category={{ c.pk }}&status=all">{{ c.n }}</a></td>
+    <td>{% if c.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'assets:category_edit' c.pk %}">Edit</a></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

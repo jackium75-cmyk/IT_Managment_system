@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }}{% endblock %}
+{% block content %}
+<div class="page-header mb-3"><nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'maintenance:list' %}">Maintenance</a></li><li class="breadcrumb-item"><a href="{{ record.get_absolute_url }}">{{ record.title }}</a></li></ol></nav>
+  <h1>{{ heading }}</h1><p class="text-muted mb-0">{{ record.asset }} · due {{ record.due_date|date:"d M Y" }}</p></div>
+<form method="post" novalidate class="card" style="max-width: 560px;">{% csrf_token %}
+  <div class="card-body">{% include "includes/form_body.html" %}<p class="small text-muted mb-0">The original due date is kept for compliance reporting.</p></div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn {{ button_class }}" type="submit">{{ button }}</button><a class="btn btn-outline-secondary" href="{{ record.get_absolute_url }}">Back</a></div>
+</form>
+{% endblock %}

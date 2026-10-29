@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <h1>Notifications</h1>
+  {% if unread_notifications %}<form method="post" action="{% url 'notifications:mark_all_read' %}">{% csrf_token %}<button class="btn btn-outline-secondary">Mark all as read</button></form>{% endif %}
+</div>
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item"><a class="nav-link {% if show == 'unread' %}active{% endif %}" href="?show=unread">Unread{% if unread_notifications %} ({{ unread_notifications }}){% endif %}</a></li>
+  <li class="nav-item"><a class="nav-link {% if show == 'all' %}active{% endif %}" href="?show=all">All</a></li>
+</ul>
+<div class="card"><ul class="list-group list-group-flush">
+  {% for n in page_obj %}
+    <li class="list-group-item {% if not n.is_read %}fw-semibold{% endif %}">
+      <a href="{% url 'notifications:open' n.pk %}" class="d-flex justify-content-between gap-2 text-decoration-none text-body">
+        <span><span class="badge {% if n.kind == 'critical' or n.kind == 'escalation' %}text-bg-danger{% elif n.kind == 'overdue' %}text-bg-warning{% else %}text-bg-light border{% endif %} me-1">{{ n.get_kind_display }}</span>{{ n.title }}
+          {% if n.body %}<span class="d-block small text-muted fw-normal">{{ n.body|truncatechars:160 }}</span>{% endif %}</span>
+        <span class="small text-muted text-nowrap fw-normal">{{ n.created_at|date:"d M H:i" }}</span>
+      </a>
+    </li>
+  {% empty %}<li class="list-group-item text-muted text-center py-4">{% if show == 'unread' %}You're all caught up.{% else %}No notifications yet.{% endif %}</li>{% endfor %}
+</ul></div>
+{% include "includes/pagination.html" %}
+{% endblock %}

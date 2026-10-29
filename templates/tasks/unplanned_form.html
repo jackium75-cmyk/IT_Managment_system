@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Record unplanned work{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'tasks:list' %}">Tasks</a></li></ol></nav>
+  <h1><i class="bi bi-lightning text-warning"></i> Record unplanned work</h1>
+  <p class="text-muted mb-0">For emergencies, walk-up requests and anything else that was not in today's plan. If it interrupted a planned task, that task and its history stay exactly as they were.</p>
+</div>
+<form method="post" novalidate class="card" style="max-width: 900px;">{% csrf_token %}
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+    <div class="row">
+      {% for field in form %}
+        {% if field.name == "mode" %}</div><hr><div class="row"><div class="col-12">{% include "includes/field.html" %}</div>
+        {% elif field.name in "worked_from worked_minutes" %}<div class="col-md-6 when-done">{% include "includes/field.html" %}</div>
+        {% elif field.name == "completion_notes" %}<div class="col-12 when-done">{% include "includes/field.html" %}</div>
+        {% elif field.name == "title" or field.name == "description" %}<div class="col-12">{% include "includes/field.html" %}</div>
+        {% else %}<div class="col-md-6">{% include "includes/field.html" %}</div>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn btn-warning" type="submit">Record</button>
+    <a class="btn btn-outline-secondary" href="{% url 'tasks:planner' %}">Cancel</a></div>
+</form>
+{% endblock %}

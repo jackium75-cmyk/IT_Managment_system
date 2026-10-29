@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load task_tags %}
+{% block title %}Weekly planner{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between gap-2 align-items-end mb-3">
+  <div><h1>Week of {{ monday|date:"d M Y" }}</h1><p class="text-muted mb-0">{% if show_all %}All IT staff{% else %}{{ owner.get_full_name|default:owner.username }}{% endif %}</p></div>
+  <div class="d-flex flex-wrap gap-2 no-print">
+    <a class="btn btn-outline-secondary" href="?date={{ prev|date:'Y-m-d' }}{% if show_all %}&user=all{% elif owner != user %}&user={{ owner.pk }}{% endif %}" aria-label="Previous week"><i class="bi bi-chevron-left"></i></a>
+    <a class="btn btn-outline-secondary" href="?{% if show_all %}user=all{% elif owner != user %}user={{ owner.pk }}{% endif %}">This week</a>
+    <a class="btn btn-outline-secondary" href="?date={{ next|date:'Y-m-d' }}{% if show_all %}&user=all{% elif owner != user %}&user={{ owner.pk }}{% endif %}" aria-label="Next week"><i class="bi bi-chevron-right"></i></a>
+    <form method="get"><input type="hidden" name="date" value="{{ monday|date:'Y-m-d' }}">
+      <select name="user" class="form-select" aria-label="Whose plan" data-autosubmit>
+        {% for u in officers %}<option value="{{ u.pk }}" {% if not show_all and u.pk == owner.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+        <option value="all" {% if show_all %}selected{% endif %}>All IT staff</option>
+      </select></form>
+  </div>
+</div>
+<div class="week-grid">
+  {% for day, tasks in days %}
+  <div class="card day-col {% if day == today %}today{% endif %}">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+      <a href="{% url 'tasks:planner' %}?date={{ day|date:'Y-m-d' }}" class="fw-semibold text-decoration-none">{{ day|date:"D d M" }}</a>
+      <a href="{% url 'tasks:create' %}?date={{ day|date:'Y-m-d' }}&next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-link p-0 no-print" aria-label="Plan a task on {{ day|date:'D d M' }}"><i class="bi bi-plus-circle"></i></a>
+    </div>
+    <div class="card-body p-2">
+      {% for t in tasks %}
+        <a href="{{ t.get_absolute_url }}" class="d-block week-task p-{{ t.priority }} ps-2 mb-2 text-decoration-none text-body {% if t.status == 'completed' %}opacity-75{% endif %}">
+          <div class="text-muted">{% if t.scheduled_start %}{{ t.scheduled_start|time:"H:i" }} · {% endif %}{{ t.number }}{% if t.is_unplanned %} <i class="bi bi-lightning-fill text-warning"></i>{% endif %}</div>
+          <div class="{% if t.status == 'completed' %}text-decoration-line-through{% endif %}">{{ t.title|truncatechars:60 }}</div>
+          <div>{{ t|status_badge }}{% if show_all %} <span class="text-muted">{{ t.assigned_to.first_name|default:t.assigned_to.username }}</span>{% endif %}</div>
+        </a>
+      {% empty %}<p class="text-muted small mb-0">—</p>{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

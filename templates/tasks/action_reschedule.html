@@ -1,0 +1,5 @@
+{% extends "tasks/_action_base.html" %}
+{% block title %}Reschedule{% endblock %}
+{% block heading %}Reschedule task{% endblock %}
+{% block button %}Reschedule{% endblock %}
+{% block intro %}<p class="small text-muted">The original date ({{ task.original_planned_date|date:"d M Y" }}) and every change are kept. Daily reports show the task as planned but moved, with your reason.</p>{% endblock %}

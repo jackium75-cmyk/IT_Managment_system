@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Diary entry{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between gap-2 align-items-end mb-3">
+  <div>
+    <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'diary:list' %}{% if entry.user != user %}?user={{ entry.user_id }}{% endif %}">Activity diary</a></li></ol></nav>
+    <h1 class="{% if entry.is_voided %}voided{% endif %}">{{ entry.title }}</h1>
+    <div class="mt-1">{% if entry.source == 'manual' %}<span class="badge text-bg-primary">Entered manually</span>{% else %}<span class="badge text-bg-light border">Recorded by system</span>{% endif %}
+      <span class="badge text-bg-light border">{{ entry.get_activity_type_display }}</span>
+      {% if entry.is_voided %}<span class="badge text-bg-danger">Voided</span>{% endif %}</div>
+  </div>
+  {% if can_edit %}<div class="d-flex gap-2"><a class="btn btn-outline-primary" href="{% url 'diary:edit' entry.pk %}">Edit</a><a class="btn btn-outline-danger" href="{% url 'diary:void' entry.pk %}">Void</a></div>{% endif %}
+</div>
+{% if entry.is_voided %}<div class="alert alert-danger">Voided by {{ entry.voided_by.get_full_name|default:entry.voided_by.username }} on {{ entry.voided_at|date:"d M Y H:i" }}: {{ entry.void_reason }}. It is not counted in any totals.</div>{% endif %}
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-4">When</dt><dd class="col-sm-8">{{ entry.occurred_at|date:"D d M Y H:i" }}{% if entry.ends_at %} – {{ entry.ends_at|time:"H:i" }}{% endif %}</dd>
+      <dt class="col-sm-4">Duration</dt><dd class="col-sm-8">{% if entry.duration_minutes %}{{ entry.duration_minutes }} min (counted){% elif entry.display_minutes %}{{ entry.display_minutes }} min (counted on the task){% else %}—{% endif %}</dd>
+      <dt class="col-sm-4">What happened</dt><dd class="col-sm-8">{{ entry.get_event_display }}</dd>
+      {% if entry.task %}<dt class="col-sm-4">Task</dt><dd class="col-sm-8"><a href="{{ entry.task.get_absolute_url }}">{{ entry.task.number }} {{ entry.task.title }}</a></dd>{% endif %}
+      <dt class="col-sm-4">Department</dt><dd class="col-sm-8">{{ entry.department|default:"—" }}</dd>
+      <dt class="col-sm-4">Location</dt><dd class="col-sm-8">{{ entry.location|default:"—" }}</dd>
+      <dt class="col-sm-4">Description</dt><dd class="col-sm-8" style="white-space: pre-line;">{{ entry.description|default:"—" }}</dd>
+      <dt class="col-sm-4">Outcome</dt><dd class="col-sm-8" style="white-space: pre-line;">{{ entry.outcome|default:"—" }}</dd>
+      <dt class="col-sm-4">Recorded</dt><dd class="col-sm-8">{{ entry.created_at|date:"d M Y H:i" }}{% if entry.updated_at|date:"U" != entry.created_at|date:"U" %} · last edited {{ entry.updated_at|date:"d M Y H:i" }}{% endif %}</dd>
+    </dl>
+  </div></div></div>
+  <div class="col-lg-5"><div class="card"><div class="card-header bg-white">Change history</div><ul class="list-group list-group-flush">
+    {% for h in history %}<li class="list-group-item small"><span class="text-muted">{{ h.timestamp|date:"d M Y H:i" }}</span> · {{ h.get_action_display }} by {{ h.actor_username }}{% if h.message %} — {{ h.message }}{% endif %}
+      {% for field, vals in h.changes.items %}<div><code>{{ field }}</code>: {{ vals.0|default:"∅" }} → {{ vals.1|default:"∅" }}</div>{% endfor %}</li>
+    {% empty %}<li class="list-group-item small text-muted">{% if entry.source == 'auto' %}System entries cannot be changed.{% else %}No changes.{% endif %}</li>{% endfor %}
+  </ul></div></div>
+</div>
+{% endblock %}

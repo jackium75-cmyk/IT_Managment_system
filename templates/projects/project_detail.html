@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load task_tags helpdesk_tags asset_tags %}
+{% block title %}{{ project.code }}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'projects:list' %}">Projects</a></li></ol></nav>
+  <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+    <div><h1>{{ project.code }} · {{ project.name }}</h1>
+      <div class="mt-1"><span class="badge {% if project.status == 'completed' %}text-bg-success{% elif project.status == 'on_hold' %}text-bg-warning{% else %}text-bg-primary{% endif %}">{{ project.get_status_display }}</span> {{ project|priority_badge }}
+        {% if project.is_overdue %}<span class="badge text-bg-danger">past target date</span>{% endif %}</div></div>
+    <div class="d-flex flex-wrap gap-2 no-print">
+      <a class="btn btn-outline-secondary" href="{% url 'projects:report' project.pk %}" target="_blank"><i class="bi bi-file-earmark-text"></i> Report</a>
+      {% if it %}<a class="btn btn-primary" href="{% url 'projects:edit' project.pk %}"><i class="bi bi-pencil"></i> Edit</a>
+      <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Add work</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="{% url 'tasks:create' %}?project={{ project.pk }}">Task</a></li>
+          <li><a class="dropdown-item" href="{% url 'procurement:create' %}?project={{ project.pk }}">Purchase request</a></li>
+        </ul></div>{% endif %}
+    </div>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Business objective</h2><p style="white-space: pre-line;">{{ project.business_objective }}</p>
+      <h2 class="h6">Description</h2><p style="white-space: pre-line;">{{ project.description }}</p>
+      {% if project.risks %}<h2 class="h6 text-warning-emphasis">Risks</h2><p style="white-space: pre-line;">{{ project.risks }}</p>{% endif %}
+      {% if project.blockers %}<h2 class="h6 text-danger">Blockers</h2><p style="white-space: pre-line;">{{ project.blockers }}</p>{% endif %}
+      {% if project.deliverables %}<h2 class="h6 text-success">Completed deliverables</h2><p style="white-space: pre-line;">{{ project.deliverables }}</p>{% endif %}
+      {% if project.final_outcome %}<h2 class="h6">Final outcome</h2><p style="white-space: pre-line;">{{ project.final_outcome }}</p>{% endif %}
+      {% if project.benefits %}<h2 class="h6">Benefits to the hotel <span class="badge text-bg-light border">{% if project.benefits_verified_by %}confirmed by {{ project.benefits_verified_by.get_full_name|default:project.benefits_verified_by.username }}{% else %}reported by IT{% endif %}</span></h2><p style="white-space: pre-line;" class="mb-0">{{ project.benefits }}</p>
+        {% if can_confirm %}<form method="post" action="{% url 'projects:confirm_benefits' project.pk %}" class="mt-2 p-2 border rounded bg-light" data-confirm="Confirm that your department has seen these benefits (and any savings stated)?">{% csrf_token %}
+          <p class="small mb-2">As a manager of {{ project.sponsor_department }}, you can confirm that these benefits{% if project.documented_savings %} and the documented savings{% endif %} are real. Reports will then show them as <strong>verified</strong>.</p>
+          <button class="btn btn-sm btn-success"><i class="bi bi-patch-check"></i> Confirm benefits</button></form>
+        {% elif project.status == 'completed' and not project.benefits_verified_by and it %}<p class="small text-muted mt-2 mb-0">Benefits stay “reported by IT” until a manager of the sponsoring department confirms them on this page.</p>{% endif %}{% endif %}
+    </div></div>
+
+    <div class="card mb-3"><div class="card-header bg-white">Milestones</div><ul class="list-group list-group-flush">
+      {% for m in milestones %}<li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+        <span>{% if m.completed_on %}<i class="bi bi-check-circle-fill text-success"></i> <s>{{ m.title }}</s>{% else %}<i class="bi bi-circle"></i> {{ m.title }}{% endif %}
+          <span class="small text-muted">{% if m.completed_on %}done {{ m.completed_on|date:"d M Y" }}{% elif m.due_date %}due {{ m.due_date|date:"d M Y" }}{% endif %}</span>{% if m.is_overdue %} <span class="badge text-bg-danger">late</span>{% endif %}
+          {% if m.notes %}<span class="d-block small text-muted">{{ m.notes }}</span>{% endif %}</span>
+        {% if it %}<form method="post" action="{% url 'projects:milestone_toggle' m.pk %}">{% csrf_token %}<button class="btn btn-sm {% if m.completed_on %}btn-outline-secondary{% else %}btn-outline-success{% endif %}">{% if m.completed_on %}Reopen{% else %}Done{% endif %}</button></form>{% endif %}
+      </li>{% empty %}<li class="list-group-item small text-muted">No milestones yet.</li>{% endfor %}
+    </ul>
+    {% if it %}<div class="card-body border-top no-print"><form method="post" action="{% url 'projects:milestone_add' project.pk %}" class="row g-2 align-items-end">{% csrf_token %}
+      <div class="col-md-6"><label class="form-label small" for="id_title">New milestone</label>{{ milestone_form.title }}</div>
+      <div class="col-md-4"><label class="form-label small" for="id_due_date">Due</label>{{ milestone_form.due_date }}</div>
+      <div class="col-md-2"><button class="btn btn-outline-primary w-100">Add</button></div></form></div>{% endif %}
+    </div>
+
+    <div class="card mb-3"><div class="card-header bg-white">Linked work</div><div class="card-body small">
+      <h3 class="h6">Tasks ({{ work.tasks|length }})</h3>
+      <ul class="mb-3">{% for t in work.tasks %}<li><a href="{{ t.get_absolute_url }}">{{ t.number }}</a> {{ t.title }} {{ t|status_badge }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}</ul>
+      <h3 class="h6">Tickets ({{ work.tickets|length }})</h3>
+      <ul class="mb-3">{% for t in work.tickets %}<li><a href="{{ t.get_absolute_url }}">{{ t.reference }}</a> {{ t.subject }} {{ t|ticket_status }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}</ul>
+      <h3 class="h6">Maintenance ({{ work.maintenance|length }})</h3>
+      <ul class="mb-3">{% for r in work.maintenance %}<li><a href="{{ r.get_absolute_url }}">{{ r.title }}</a> · {{ r.asset.tag }} {{ r|record_status }}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}</ul>
+      <h3 class="h6">Purchases ({{ work.procurement|length }})</h3>
+      <ul class="mb-0">{% for p in work.procurement %}<li><a href="{{ p.get_absolute_url }}">{{ p.reference }}</a> {{ p.item }} · {{ p.get_status_display }}{% if p.actual_expenditure is not None %} · {{ p.actual_expenditure }} {{ p.currency }}{% endif %}</li>{% empty %}<li class="text-muted">None</li>{% endfor %}</ul>
+    </div></div>
+
+    <div class="card"><div class="card-header bg-white">Progress log</div>
+      {% if it %}<div class="card-body border-bottom no-print"><form method="post" action="{% url 'projects:update_add' project.pk %}">{% csrf_token %}{% include "includes/field.html" with field=update_form.body %}<button class="btn btn-sm btn-primary">Add update</button></form></div>{% endif %}
+      <ul class="list-group list-group-flush">{% for u in updates %}<li class="list-group-item small {% if u.is_system %}text-muted{% endif %}"><span class="text-muted">{{ u.created_at|date:"d M Y H:i" }} · {{ u.author.get_full_name|default:u.author.username|default:"System" }}</span><div style="white-space: pre-line;">{{ u.body }}</div></li>{% empty %}<li class="list-group-item small text-muted">No updates.</li>{% endfor %}</ul>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card mb-3"><div class="card-body"><dl class="row small mb-0">
+      <dt class="col-5">Owner</dt><dd class="col-7">{{ project.owner.get_full_name|default:project.owner.username }}</dd>
+      <dt class="col-5">Department</dt><dd class="col-7">{{ project.sponsor_department|default:"—" }}</dd>
+      <dt class="col-5">Start</dt><dd class="col-7">{{ project.start_date|date:"d M Y"|default:"—" }}</dd>
+      <dt class="col-5">Target</dt><dd class="col-7">{{ project.target_date|date:"d M Y"|default:"—" }}</dd>
+      {% if project.completed_on %}<dt class="col-5">Completed</dt><dd class="col-7">{{ project.completed_on|date:"d M Y" }}</dd>{% endif %}
+      <dt class="col-5">Progress</dt><dd class="col-7">{% if project.progress is not None %}{{ project.progress }}% of milestones{% else %}—{% endif %}</dd>
+      <dt class="col-5">Time recorded</dt><dd class="col-7"><strong>{{ time }}</strong></dd>
+      {% if project.documented_savings %}<dt class="col-5">Documented savings</dt><dd class="col-7">{{ project.documented_savings }} {{ project.currency }}<div class="text-muted">{{ project.savings_evidence }}</div></dd>{% endif %}
+    </dl></div></div>
+    <div class="card mb-3"><div class="card-header bg-white">Costs</div>{% include "projects/_costs.html" %}</div>
+    <div class="card"><div class="card-header bg-white">Documents</div><div class="card-body">
+      {% if attachments %}<div class="evidence-grid mb-3">{% for att in attachments %}{% url 'projects:attachment' att.pk as file_url %}{% include "evidence/_file.html" with url=file_url %}{% endfor %}</div>{% endif %}
+      {% if it %}<form method="post" action="{% url 'projects:attach' project.pk %}" enctype="multipart/form-data" class="evidence-form no-print" novalidate>{% csrf_token %}
+        {% include "evidence/_upload_field.html" with field=attach_form.files %}{% include "includes/field.html" with field=attach_form.description %}<button class="btn btn-sm btn-outline-primary">Upload</button></form>{% endif %}
+    </div></div>
+  </div>
+</div>
+{% endblock %}

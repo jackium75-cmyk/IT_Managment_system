@@ -1,0 +1,7 @@
+{% extends "tasks/_action_base.html" %}
+{% block title %}{% if attachment %}Remove file{% else %}Void time entry{% endif %}{% endblock %}
+{% block heading %}{% if attachment %}Remove “{{ attachment.original_name }}”{% else %}Void time entry{% endif %}{% endblock %}
+{% block button_class %}btn-danger{% endblock %}
+{% block button %}{% if attachment %}Remove from view{% else %}Void entry{% endif %}{% endblock %}
+{% block intro %}{% if attachment %}<p class="small text-muted">The file is hidden but kept for the audit record.</p>{% else %}<p>{{ entry.started_at|date:"D d M Y H:i" }}, {{ entry.minutes }} min, recorded by {{ entry.user.get_full_name|default:entry.user.username }}{% if entry.note %}: “{{ entry.note }}”{% endif %}.</p>
+<p class="small text-muted">The entry stays in the history but no longer counts in totals.</p>{% endif %}{% endblock %}

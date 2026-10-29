@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<div class="page-header mb-3"><h1>Audit log</h1><p class="text-muted small mb-0">Append-only. Entries cannot be edited or deleted.</p></div>
+<form method="get" class="card card-body mb-3 no-print"><div class="row g-2 align-items-end">
+  <div class="col-12 col-md-3"><label class="form-label small" for="f-q">Search</label><input type="search" id="f-q" name="q" value="{{ q }}" class="form-control" placeholder="User, record, message, IP"></div>
+  <div class="col-6 col-md-3"><label class="form-label small" for="f-action">Event</label>
+    <select id="f-action" name="action" class="form-select"><option value="">All events</option>
+      {% for value, label in actions %}<option value="{{ value }}" {% if action == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-start">From</label><input type="date" id="f-start" name="start" value="{{ start }}" class="form-control"></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-end">To</label><input type="date" id="f-end" name="end" value="{{ end }}" class="form-control"></div>
+  <div class="col-6 col-md-2 d-flex gap-2"><button class="btn btn-outline-primary flex-fill">Filter</button><a class="btn btn-outline-secondary" href="{% url 'core:audit_log' %}">Reset</a></div>
+</div></form>
+<div class="card"><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
+  <thead><tr><th>Time</th><th>User</th><th>Event</th><th>Record</th><th>Details</th><th>IP address</th></tr></thead>
+  <tbody>
+  {% for e in page_obj %}
+    <tr>
+      <td class="text-nowrap">{{ e.timestamp|date:"d M Y H:i:s" }}</td>
+      <td>{{ e.actor_username|default:"system" }}</td>
+      <td><span class="badge {% if e.action == 'login_failed' or e.action == 'login_locked' or e.action == 'access_denied' %}text-bg-danger{% elif e.action == 'config_change' %}text-bg-warning{% else %}text-bg-light border{% endif %}">{{ e.get_action_display }}</span></td>
+      <td>{% if e.content_type %}<span class="text-muted small">{{ e.content_type.name|capfirst }}:</span> {% endif %}{{ e.object_repr|default:"—" }}</td>
+      <td class="changes-cell">{{ e.message }}{% if e.changes %}{% for field, vals in e.changes.items %}<div class="small"><code>{{ field }}</code>: {{ vals.0|default:"∅" }} → {{ vals.1|default:"∅" }}</div>{% endfor %}{% endif %}</td>
+      <td class="small text-muted">{{ e.ip_address|default:"" }}</td>
+    </tr>
+  {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No events match these filters.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% include "includes/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load asset_tags task_tags helpdesk_tags %}
+{% block title %}{{ asset.tag }}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'assets:list' %}">Assets</a></li></ol></nav>
+  <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+    <div><h1>{{ asset.tag }} · {{ asset.name }}</h1>
+      <div class="mt-1 d-flex flex-wrap gap-1">{{ asset|asset_status }} {{ asset|asset_condition }} <span class="badge text-bg-light border">{{ asset.category }}</span>
+        {% if asset.replacement != "none" %}<span class="badge {% if asset.replacement == 'urgent' %}text-bg-danger{% else %}text-bg-warning{% endif %}">{{ asset.get_replacement_display }}</span>{% endif %}</div></div>
+    <div class="d-flex flex-wrap gap-2 no-print">
+      <a class="btn btn-primary" href="{% url 'assets:edit' asset.pk %}"><i class="bi bi-pencil"></i> Edit / move</a>
+      <a class="btn btn-outline-secondary" href="{% url 'maintenance:corrective_create' %}?asset={{ asset.pk }}"><i class="bi bi-wrench"></i> Record repair</a>
+      <div class="dropdown"><button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">More</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="{% url 'maintenance:plan_create' %}?asset={{ asset.pk }}">Add maintenance plan</a></li>
+          <li><a class="dropdown-item" href="{% url 'tasks:create' %}?asset={{ asset.pk }}">Plan a task for this asset</a></li>
+          <li><a class="dropdown-item" href="{% url 'procurement:create' %}?asset={{ asset.pk }}">Purchase / repair request</a></li>
+          <li><a class="dropdown-item" href="{% url 'assets:labels' %}?id={{ asset.pk }}" target="_blank">Print QR label</a></li>
+          <li><hr class="dropdown-divider"></li>
+          {% if asset.in_service %}
+          <li><a class="dropdown-item" href="{% url 'assets:status' asset.pk %}?to=retired">Retire…</a></li>
+          <li><a class="dropdown-item" href="{% url 'assets:status' asset.pk %}?to=disposed">Dispose…</a></li>
+          <li><a class="dropdown-item text-danger" href="{% url 'assets:status' asset.pk %}?to=lost">Report lost / stolen…</a></li>
+          {% else %}<li><a class="dropdown-item" href="{% url 'assets:status' asset.pk %}?to=in_stock">Return to service…</a></li>{% endif %}
+        </ul></div>
+    </div>
+  </div>
+</div>
+{% if reasons %}<div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> <strong>Needs attention:</strong> {{ reasons|join:"; " }}.</div>{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body"><div class="row">
+      <div class="col-md-6"><dl class="row small mb-0">
+        <dt class="col-5">Manufacturer</dt><dd class="col-7">{{ asset.manufacturer|default:"—" }}</dd>
+        <dt class="col-5">Model</dt><dd class="col-7">{{ asset.model|default:"—" }}</dd>
+        <dt class="col-5">Serial number</dt><dd class="col-7">{{ asset.serial_number|default:"—" }}</dd>
+        <dt class="col-5">Department</dt><dd class="col-7">{{ asset.department|default:"—" }}</dd>
+        <dt class="col-5">Location</dt><dd class="col-7">{{ asset.location|default:"—" }}</dd>
+        <dt class="col-5">Assigned to</dt><dd class="col-7">{% if asset.assigned_to %}{{ asset.assigned_to.get_full_name|default:asset.assigned_to.username }}{% else %}—{% endif %}</dd>
+        <dt class="col-5">Hostname</dt><dd class="col-7">{{ asset.hostname|default:"—" }}</dd>
+        <dt class="col-5">IP / MAC</dt><dd class="col-7">{{ asset.ip_address|default:"—" }}{% if asset.mac_address %}<br>{{ asset.mac_address }}{% endif %}</dd>
+        <dt class="col-5">Operating system</dt><dd class="col-7">{{ asset.operating_system|default:"—" }} {{ asset.os_version }}</dd>
+      </dl></div>
+      <div class="col-md-6"><dl class="row small mb-0">
+        <dt class="col-5">Purchased</dt><dd class="col-7">{{ asset.purchase_date|date:"d M Y"|default:"—" }}{% if asset.age_years is not None %} <span class="text-muted">({{ asset.age_years }} yrs)</span>{% endif %}</dd>
+        <dt class="col-5">Cost</dt><dd class="col-7">{% if asset.purchase_cost is not None %}{{ asset.purchase_cost }} {{ asset.currency }}{% else %}—{% endif %}</dd>
+        <dt class="col-5">Supplier</dt><dd class="col-7">{{ asset.supplier|default:"—" }}</dd>
+        <dt class="col-5">Warranty</dt><dd class="col-7">{% if asset.warranty_expiry %}{{ asset.warranty_expiry|date:"d M Y" }} <span class="badge {% if asset.warranty_status == 'expired' %}text-bg-secondary{% elif asset.warranty_status == 'expiring' %}text-bg-warning{% else %}text-bg-success{% endif %}">{{ asset.warranty_status }}</span>{% else %}—{% endif %}{% if asset.warranty_details %}<div class="text-muted">{{ asset.warranty_details }}</div>{% endif %}</dd>
+        <dt class="col-5">Repair, maintenance &amp; purchase spend</dt><dd class="col-7">{% for cur, total in expenses.items %}{{ total }} {{ cur }}<br>{% empty %}None recorded{% endfor %}</dd>
+        <dt class="col-5">Tickets</dt><dd class="col-7">{{ ticket_count }} total{% if failures %}, {{ failures }} failure(s) in 90 days{% endif %}</dd>
+        <dt class="col-5">Registered</dt><dd class="col-7">{{ asset.created_at|date:"d M Y" }}</dd>
+      </dl></div>
+      {% if asset.software %}<div class="col-12 mt-2"><h2 class="h6">Software &amp; licences</h2><div class="small" style="white-space: pre-line;">{{ asset.software }}</div></div>{% endif %}
+      {% if asset.replacement_reason %}<div class="col-12 mt-2"><h2 class="h6">Replacement recommendation</h2><div class="small">{{ asset.replacement_reason }}</div></div>{% endif %}
+      {% if asset.notes %}<div class="col-12 mt-2"><h2 class="h6">Notes</h2><div class="small" style="white-space: pre-line;">{{ asset.notes }}</div></div>{% endif %}
+    </div></div></div>
+
+    <div class="card mb-3"><div class="card-header bg-white">Service history</div>
+      <ul class="list-group list-group-flush">
+        {% for e in history %}
+          <li class="list-group-item small d-flex justify-content-between gap-2">
+            <div><i class="bi bi-{% if e.kind == 'incident' %}exclamation-diamond text-danger{% elif e.kind == 'request' %}life-preserver text-primary{% elif e.kind == 'repair' %}wrench text-warning{% elif e.kind == 'maintenance' %}tools text-success{% elif e.kind == 'purchase' %}cart3 text-info{% else %}arrow-left-right text-muted{% endif %}"></i>
+              <span class="text-muted">{{ e.at|date:"d M Y" }}</span> · {% if e.url %}<a href="{{ e.url }}">{{ e.title }}</a>{% else %}{{ e.title }}{% endif %}
+              {% if e.detail %}<div class="text-muted">{{ e.detail }}</div>{% endif %}</div>
+            {% if e.cost %}<span class="text-nowrap">{{ e.cost }} {{ e.currency }}</span>{% endif %}
+          </li>
+        {% empty %}<li class="list-group-item small text-muted">No history yet.</li>{% endfor %}
+      </ul></div>
+
+    <div class="card" id="documents"><div class="card-header bg-white">Documents &amp; photos</div><div class="card-body">
+      {% if attachments %}<div class="evidence-grid mb-3">{% for att in attachments %}{% url 'assets:attachment' att.pk as file_url %}{% url 'assets:attachment_hide' att.pk as hide_url %}{% include "evidence/_file.html" with url=file_url hide_url=hide_url %}{% endfor %}</div>{% endif %}
+      <form method="post" action="{% url 'assets:attach' asset.pk %}" enctype="multipart/form-data" class="evidence-form no-print" novalidate>{% csrf_token %}
+        <div class="row"><div class="col-md-7">{% include "evidence/_upload_field.html" with field=attach_form.files %}</div><div class="col-md-5">{% include "includes/field.html" with field=attach_form.description %}</div></div>
+        <button class="btn btn-sm btn-outline-primary">Upload</button></form>
+    </div></div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3 text-center"><div class="card-body">
+      <img src="{% url 'assets:qr' asset.pk %}" alt="QR code for {{ asset.tag }}" width="160" height="160">
+      <div class="fw-semibold">{{ asset.tag }}</div>
+      <p class="small text-muted mb-2">Scanning opens this record for IT staff (after sign-in). Other staff are taken to “report a problem with this device”. The code contains no details or credentials.</p>
+      <a href="{% url 'assets:labels' %}?id={{ asset.pk }}" target="_blank" class="btn btn-sm btn-outline-secondary">Print label</a>
+      <a href="{% url 'assets:qr' asset.pk %}?download=1" class="btn btn-sm btn-outline-secondary">Download PNG</a>
+    </div></div>
+    <div class="card mb-3"><div class="card-header bg-white d-flex justify-content-between">Maintenance <a href="{% url 'maintenance:plan_create' %}?asset={{ asset.pk }}" class="small no-print">+ Plan</a></div>
+      <ul class="list-group list-group-flush">
+        {% for r in upcoming %}<li class="list-group-item small"><a href="{{ r.get_absolute_url }}">{{ r.title }}</a> {{ r|record_status }}<div class="text-muted">Due {{ r.due_date|date:"d M Y" }} · {{ r.responsible.get_full_name|default:r.responsible.username }}</div></li>{% endfor %}
+        {% for p in plans %}<li class="list-group-item small {% if not p.is_active %}text-muted{% endif %}"><i class="bi bi-arrow-repeat"></i> {{ p.title }} — {{ p.describe }}{% if not p.is_active %} (stopped){% endif %} · <a href="{% url 'maintenance:plan_edit' p.pk %}">edit</a></li>
+        {% empty %}<li class="list-group-item small text-muted">No maintenance plan. {% if asset.category.default_maintenance_days %}Suggested: every {{ asset.category.default_maintenance_days }} days.{% endif %}</li>{% endfor %}
+      </ul></div>
+    <div class="card"><div class="card-header bg-white">Open tickets</div><ul class="list-group list-group-flush">
+      {% for t in open_tickets %}<li class="list-group-item small"><a href="{{ t.get_absolute_url }}">{{ t.reference }}</a> {{ t.subject }} {{ t|ticket_status }}</li>
+      {% empty %}<li class="list-group-item small text-muted">None.</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

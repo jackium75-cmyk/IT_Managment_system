@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Activity diary{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-end mb-3">
+  <div><h1>Activity diary{% if not is_own %} · {{ owner.get_full_name|default:owner.username }}{% endif %}</h1>
+    <p class="text-muted mb-0">{{ start|date:"d M Y" }} – {{ end|date:"d M Y" }}</p></div>
+  <div class="d-flex gap-2 no-print">
+    <button class="btn btn-outline-secondary" type="button" data-print><i class="bi bi-printer"></i> Print</button>
+    {% if is_own %}<a class="btn btn-primary" href="{% url 'diary:create' %}"><i class="bi bi-plus-lg"></i> Add work entry</a>{% endif %}
+  </div>
+</div>
+
+<form method="get" class="card card-body mb-3 no-print"><div class="row g-2 align-items-end">
+  {% if officers %}<div class="col-6 col-md-2"><label class="form-label small" for="f-user">Diary of</label>
+    <select id="f-user" name="user" class="form-select">{% for u in officers %}<option value="{{ u.pk }}" {% if u.pk == owner.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}</select></div>{% endif %}
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-start">From</label><input type="date" id="f-start" name="start" value="{{ start|date:'Y-m-d' }}" class="form-control"></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-end">To</label><input type="date" id="f-end" name="end" value="{{ end|date:'Y-m-d' }}" class="form-control"></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-type">Activity type</label>
+    <select id="f-type" name="type" class="form-select"><option value="">All</option>{% for v, l in types %}<option value="{{ v }}" {% if f.type == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-source">Recorded</label>
+    <select id="f-source" name="source" class="form-select"><option value="">Both</option>{% for v, l in sources %}<option value="{{ v }}" {% if f.source == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-dept">Department</label>
+    <select id="f-dept" name="department" class="form-select"><option value="">All</option>{% for d in departments %}<option value="{{ d.pk }}" {% if f.department == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-3"><label class="form-label small" for="f-q">Search</label><input type="search" id="f-q" name="q" value="{{ f.q }}" class="form-control" placeholder="Words in title, notes, outcome"></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-task">Task number</label><input type="search" id="f-task" name="task" value="{{ f.task }}" class="form-control" placeholder="TSK-…"></div>
+  <div class="col-6 col-md-2"><div class="form-check mt-4"><input class="form-check-input" type="checkbox" id="f-void" name="voided" value="1" {% if f.voided == "1" %}checked{% endif %}><label class="form-check-label" for="f-void">Show voided</label></div></div>
+  <div class="col-12 col-md-3 d-flex gap-2"><button class="btn btn-outline-primary flex-fill">Filter</button><a class="btn btn-outline-secondary" href="{% url 'diary:list' %}{% if not is_own %}?user={{ owner.pk }}{% endif %}">Reset</a></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-ticket">Ticket</label><input type="search" id="f-ticket" name="ticket" value="{{ f.ticket }}" class="form-control" placeholder="INC-…"></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-asset">Asset</label><input type="search" id="f-asset" name="asset" value="{{ f.asset }}" class="form-control" placeholder="Tag or name"></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-project">Project</label><input type="search" id="f-project" name="project" value="{{ f.project }}" class="form-control" placeholder="PRJ-… or name"></div>
+</div></form>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4"><div class="card h-100"><div class="card-body">
+    <div class="small text-muted">Recorded time in period</div>
+    <div class="metric-value fs-3">{{ total }}</div>
+    <div class="small">Planned work {{ planned_time }} · Unplanned {{ unplanned_time }}</div>
+    <p class="form-text mb-0">Counted from task time entries and manual entries. Every minute is counted once.</p>
+  </div></div></div>
+  <div class="col-md-8"><div class="card h-100"><div class="card-body">
+    <div class="small text-muted mb-2">Time by activity type</div>
+    {% for label, text, m in by_activity %}
+      <div class="d-flex justify-content-between small"><span>{{ label }}</span><span>{{ text }}</span></div>
+      <div class="progress mb-2" role="progressbar" aria-label="{{ label }}" style="height: 6px;"><div class="progress-bar" style="width: {% widthratio m summary.total_minutes 100 %}%"></div></div>
+    {% empty %}<p class="text-muted small mb-0">No time recorded in this period.</p>{% endfor %}
+  </div></div></div>
+</div>
+
+{% for row in day_rows %}
+  <div class="d-flex flex-wrap justify-content-between align-items-baseline mt-3 mb-2">
+    <h2 class="h5 mb-0">{{ row.day|date:"l d F Y" }}</h2>
+    <div class="small text-muted"><a href="{% url 'tasks:planner' %}?date={{ row.day|date:'Y-m-d' }}{% if not is_own %}&user={{ owner.pk }}{% endif %}">{{ row.done }} of {{ row.planned }} planned tasks completed</a> · {{ row.minutes }} recorded</div>
+  </div>
+  <div class="card mb-2"><ul class="list-group list-group-flush">
+    {% for e in row.entries %}
+      <li class="list-group-item {% if e.source == 'manual' %}diary-manual{% else %}diary-auto{% endif %}">
+        <div class="d-flex flex-wrap justify-content-between gap-2">
+          <div class="{% if e.is_voided %}voided{% endif %}">
+            <span class="text-muted small me-2">{{ e.occurred_at|time:"H:i" }}{% if e.ends_at %}–{{ e.ends_at|time:"H:i" }}{% endif %}</span>
+            <a href="{% url 'diary:detail' e.pk %}" class="text-decoration-none text-body fw-semibold">{{ e.title }}</a>
+            {% if e.task and e.source == 'manual' %} · <a href="{{ e.task.get_absolute_url }}">{{ e.task.number }}</a>{% endif %}
+            {% if e.asset %} · <a href="{{ e.asset.get_absolute_url }}" class="small">{{ e.asset.tag }}</a>{% endif %}
+            {% if e.outcome %}<div class="small text-muted">Outcome: {{ e.outcome|truncatechars:140 }}</div>{% elif e.description %}<div class="small text-muted">{{ e.description|truncatechars:140 }}</div>{% endif %}
+          </div>
+          <div class="text-end small text-nowrap">
+            {% if e.source == 'manual' %}<span class="badge text-bg-primary" title="Typed by the officer">Manual</span>{% else %}<span class="badge text-bg-light border" title="Recorded automatically by the system">System</span>{% endif %}
+            <span class="badge text-bg-light border">{{ e.get_activity_type_display }}</span>
+            {% if e.display_minutes %}<div class="text-muted">{{ e.display_minutes }} min</div>{% endif %}
+            {% if e.is_voided %}<div class="text-danger">Voided</div>{% endif %}
+          </div>
+        </div>
+      </li>
+    {% endfor %}
+  </ul></div>
+{% empty %}
+  <div class="card card-body text-center text-muted">No diary entries in this period.{% if is_own %} Work on tasks is recorded automatically. <a href="{% url 'diary:create' %}">Add a manual entry</a> for meetings, consultations and other work.{% endif %}</div>
+{% endfor %}
+{% include "includes/pagination.html" %}
+{% endblock %}

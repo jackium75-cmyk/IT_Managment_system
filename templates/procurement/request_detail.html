@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ req.reference }}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'procurement:list' %}">Procurement</a></li></ol></nav>
+  <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+    <div><h1>{{ req.reference }} · {{ req.item }}</h1>
+      <div class="mt-1"><span class="badge {% if req.status == 'pending' %}text-bg-warning{% elif req.status == 'delivered' %}text-bg-success{% elif req.status == 'rejected' %}text-bg-danger{% else %}text-bg-primary{% endif %}">{{ req.get_status_display }}</span> <span class="badge text-bg-light border">{{ req.get_request_type_display }}</span></div></div>
+    {% if it %}<div class="d-flex flex-wrap gap-2 no-print">
+      {% if req.status == "draft" or req.status == "rejected" %}
+        <form method="post" action="{% url 'procurement:submit' req.pk %}">{% csrf_token %}<button class="btn btn-primary"><i class="bi bi-send"></i> Submit{% if req.status == "rejected" %} again{% endif %}</button></form>
+      {% endif %}
+      {% if req.status == "approved" %}<a class="btn btn-primary" href="{% url 'procurement:ordered' req.pk %}">Mark ordered</a>{% endif %}
+      {% if req.status == "approved" or req.status == "ordered" %}<a class="btn btn-success" href="{% url 'procurement:delivered' req.pk %}">Record delivery / completion</a>{% endif %}
+      {% if req.status != "delivered" and req.status != "cancelled" %}<a class="btn btn-outline-secondary" href="{% url 'procurement:edit' req.pk %}">Edit</a>
+        <a class="btn btn-outline-danger" href="{% url 'procurement:cancel' req.pk %}">Cancel</a>{% endif %}
+    </div>{% endif %}
+  </div>
+</div>
+{% if can_approve %}
+<div class="card border-warning mb-3"><div class="card-header bg-warning-subtle"><i class="bi bi-patch-question"></i> Your decision is needed</div><div class="card-body">
+  <form method="post" action="{% url 'procurement:decide' req.pk %}" novalidate>{% csrf_token %}
+    <div class="row">{% for field in decision_form %}<div class="col-md-4">{% include "includes/field.html" with inline_choices=True %}</div>{% endfor %}</div>
+    <button class="btn btn-primary">Record decision</button></form>
+</div></div>
+{% elif req.status == "pending" %}<div class="alert alert-light border small">Awaiting approval by the department head or an administrator. You cannot approve a request you raised.</div>{% endif %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+      <h2 class="h6">Why it is needed</h2><p style="white-space: pre-line;">{{ req.reason }}</p>
+      {% if req.outcome %}<h2 class="h6">Outcome</h2><p style="white-space: pre-line;">{{ req.outcome }}</p>{% endif %}
+      {% if req.cost_saving_note %}<h2 class="h6">Documented saving</h2><p style="white-space: pre-line;" class="mb-0">{{ req.cost_saving_note }}</p>{% endif %}
+    </div></div>
+    <div class="card mb-3"><div class="card-header bg-white">Quotations, invoices &amp; documents</div><div class="card-body">
+      {% if attachments %}<div class="evidence-grid mb-3">{% for att in attachments %}{% url 'procurement:attachment' att.pk as file_url %}{% include "evidence/_file.html" with url=file_url %}{% endfor %}</div>{% endif %}
+      {% if it %}<form method="post" action="{% url 'procurement:attach' req.pk %}" enctype="multipart/form-data" class="evidence-form no-print" novalidate>{% csrf_token %}
+        <div class="row"><div class="col-md-6">{% include "evidence/_upload_field.html" with field=attach_form.files %}</div><div class="col-md-3">{% include "includes/field.html" with field=attach_form.doc_type %}</div><div class="col-md-3">{% include "includes/field.html" with field=attach_form.description %}</div></div>
+        <button class="btn btn-sm btn-outline-primary">Upload</button></form>{% endif %}
+    </div></div>
+    <div class="card"><div class="card-header bg-white">Approvals &amp; history</div><ul class="list-group list-group-flush">
+      {% for a in approvals %}<li class="list-group-item small"><span class="badge {% if a.decision == 'approved' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ a.get_decision_display }}</span> by {{ a.approver.get_full_name|default:a.approver.username }}, {{ a.decided_at|date:"d M Y H:i" }}{% if a.approved_amount is not None %} · {{ a.approved_amount }} {{ req.currency }}{% endif %}{% if a.comment %}<div class="text-muted">{{ a.comment }}</div>{% endif %}</li>{% endfor %}
+      {% for h in history %}<li class="list-group-item small text-muted">{{ h.timestamp|date:"d M Y H:i" }} · {{ h.actor_username|default:"system" }} · {{ h.get_action_display }}{% if h.message %} — {{ h.message }}{% endif %}</li>{% endfor %}
+    </ul></div>
+  </div>
+  <div class="col-lg-4"><div class="card"><div class="card-body"><dl class="row small mb-0">
+    <dt class="col-5">Quantity</dt><dd class="col-7">{{ req.quantity }}</dd>
+    <dt class="col-5">Estimated</dt><dd class="col-7">{{ req.estimated_cost }} {{ req.currency }}</dd>
+    <dt class="col-5">Approved</dt><dd class="col-7">{% if req.approved_cost is not None %}{{ req.approved_cost }} {{ req.currency }}{% else %}—{% endif %}</dd>
+    <dt class="col-5">Actual</dt><dd class="col-7">{% if req.actual_expenditure is not None %}{{ req.actual_expenditure }} {{ req.currency }}{% if req.variance %} <span class="{% if req.variance > 0 %}text-danger{% else %}text-success{% endif %}">({% if req.variance > 0 %}+{% endif %}{{ req.variance }})</span>{% endif %}{% else %}—{% endif %}</dd>
+    <dt class="col-5">Department</dt><dd class="col-7">{{ req.department|default:"—" }}</dd>
+    <dt class="col-5">Supplier</dt><dd class="col-7">{{ req.supplier|default:"—" }}</dd>
+    <dt class="col-5">Asset</dt><dd class="col-7">{% if req.asset %}{% if it %}<a href="{{ req.asset.get_absolute_url }}">{{ req.asset }}</a>{% else %}{{ req.asset }}{% endif %}{% else %}—{% endif %}</dd>
+    <dt class="col-5">Ticket</dt><dd class="col-7">{% if req.ticket %}<a href="{{ req.ticket.get_absolute_url }}">{{ req.ticket.reference }}</a>{% else %}—{% endif %}</dd>
+    <dt class="col-5">Project</dt><dd class="col-7">{% if req.project %}<a href="{{ req.project.get_absolute_url }}">{{ req.project.code }}</a>{% else %}—{% endif %}</dd>
+    <dt class="col-5">Purchased</dt><dd class="col-7">{{ req.purchase_date|date:"d M Y"|default:"—" }}</dd>
+    <dt class="col-5">Delivered</dt><dd class="col-7">{{ req.delivery_date|date:"d M Y"|default:"—" }}</dd>
+    <dt class="col-5">Warranty</dt><dd class="col-7">{{ req.warranty|default:"—" }}</dd>
+    <dt class="col-5">Requested by</dt><dd class="col-7">{{ req.requested_by.get_full_name|default:req.requested_by.username }}<br>{{ req.created_at|date:"d M Y" }}</dd>
+  </dl></div></div></div>
+</div>
+{% endblock %}

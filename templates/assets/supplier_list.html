@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Suppliers{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <div><nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'assets:list' %}">Assets</a></li></ol></nav><h1>Suppliers</h1></div>
+  <a href="{% url 'assets:supplier_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>New supplier</a></div>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+  <thead><tr><th>Name</th><th>Contact</th><th>Phone</th><th>Email</th><th class="text-end">Assets</th><th>Status</th><th></th></tr></thead>
+  <tbody>{% for s in items %}<tr><td>{{ s.name }}</td><td>{{ s.contact_person|default:"—" }}</td><td>{{ s.phone|default:"—" }}</td><td>{{ s.email|default:"—" }}</td>
+    <td class="text-end">{{ s.n }}</td><td>{% if s.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'assets:supplier_edit' s.pk %}">Edit</a></td></tr>
+  {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No suppliers yet.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

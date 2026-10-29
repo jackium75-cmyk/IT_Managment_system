@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div><h1>Dashboard</h1>
+    <p class="text-muted small mb-0">{{ filters.start|date:"d M Y" }} – {{ filters.end|date:"d M Y" }}. Every figure is counted from live records; select a card to open the matching list.</p></div>
+  <button class="btn btn-outline-secondary btn-sm no-print" type="button" data-print><i class="bi bi-printer me-1"></i>Print</button>
+</div>
+
+<form method="get" class="card card-body mb-4 no-print" aria-label="Dashboard filters"><div class="row g-2 align-items-end">
+  <div class="col-6 col-md-3"><label class="form-label small" for="f-start">From</label><input type="date" id="f-start" name="start" value="{{ filters.start|date:'Y-m-d' }}" class="form-control"></div>
+  <div class="col-6 col-md-3"><label class="form-label small" for="f-end">To</label><input type="date" id="f-end" name="end" value="{{ filters.end|date:'Y-m-d' }}" class="form-control"></div>
+  <div class="col-12 col-md-6"><label class="form-label small" for="f-dept">Department</label>
+    <select id="f-dept" name="department" class="form-select" {% if locked_department %}disabled{% endif %}>
+      {% if not locked_department %}<option value="">All departments</option>{% endif %}
+      {% for d in departments %}<option value="{{ d.pk }}" {% if filters.department_id == d.pk %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+    </select></div>
+  {% if options %}
+  <div class="col-6 col-md-3"><label class="form-label small" for="f-cat">Category</label>
+    <select id="f-cat" name="category" class="form-select"><option value="">All</option>
+      {% for c in options.categories %}<option value="{{ c.pk }}" {% if filters.extra.category == c.pk %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-3"><label class="form-label small" for="f-pri">Priority</label>
+    <select id="f-pri" name="priority" class="form-select"><option value="">All</option>
+      {% for v, l in options.priorities %}<option value="{{ v }}" {% if filters.extra.priority == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-3"><label class="form-label small" for="f-status">Status</label>
+    <select id="f-status" name="status" class="form-select"><option value="">All</option>
+      {% for v, l in options.statuses %}<option value="{{ v }}" {% if filters.extra.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-3"><label class="form-label small" for="f-off">IT officer</label>
+    <select id="f-off" name="officer" class="form-select"><option value="">All</option>
+      {% for u in options.officers %}<option value="{{ u.pk }}" {% if filters.extra.officer == u.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}</select></div>
+  {% endif %}
+  <div class="col-12 col-md-3 ms-auto d-flex gap-2"><button class="btn btn-primary flex-fill" type="submit">Apply</button><a class="btn btn-outline-secondary" href="{% url 'dashboard:index' %}">Reset</a></div>
+</div>
+{% if options %}<p class="form-text mb-0 mt-2">“Today's work” always shows today. The other sections use the selected period. The status filter applies to “Tasks in selected period”.</p>{% endif %}
+</form>
+
+{% for section, cards in card_sections.items %}
+  <h2 class="h6 text-uppercase text-muted mb-2">{{ section }}</h2>
+  <div class="row g-3 mb-4">
+    {% for c in cards %}
+    <div class="col-6 col-md-4 col-xl-2">
+      {% if c.url %}<a href="{{ c.url }}" class="card metric-card h-100 text-decoration-none text-body"{% if c.help %} title="{{ c.help }}"{% endif %}>
+      {% else %}<div class="card metric-card h-100"{% if c.help %} title="{{ c.help }}"{% endif %}>{% endif %}
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="metric-value text-{{ c.tone }}">{{ c.value }}</div>
+            <i class="bi bi-{{ c.icon }} metric-icon text-{{ c.tone }}" aria-hidden="true"></i>
+          </div>
+          <div class="small text-muted mt-1">{{ c.label }}</div>
+        </div>
+      {% if c.url %}</a>{% else %}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+{% endfor %}
+
+{% if charts %}
+<div class="row g-3 mb-4">
+  {% for chart in charts %}
+  <div class="col-lg-6"><div class="card h-100">
+    <div class="card-header bg-white">{{ chart.title }}</div>
+    <div class="card-body">{% if chart.empty %}<p class="text-muted mb-0">{{ chart.empty }}</p>{% else %}
+      <div style="height: 260px;"><canvas data-chart="{{ chart.id }}" role="img" aria-label="{{ chart.title }}"></canvas></div>
+      {% if chart.help %}<p class="form-text mb-0">{{ chart.help }}</p>{% endif %}{% endif %}</div>
+    {% if not chart.empty %}{{ chart|json_script:chart.id }}{% endif %}
+  </div></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if upcoming %}
+<div class="card no-print"><div class="card-header bg-white"><i class="bi bi-signpost-split me-1"></i>Metrics added by upcoming phases</div>
+  <ul class="list-group list-group-flush">
+    {% for phase, text in upcoming %}<li class="list-group-item small"><span class="badge text-bg-secondary me-2">Phase {{ phase }}</span>{{ text }}</li>{% endfor %}
+  </ul></div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>{% endblock %}

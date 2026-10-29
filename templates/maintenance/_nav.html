@@ -1,0 +1,6 @@
+<div class="d-flex flex-wrap gap-2 mb-3 no-print">
+  <a class="btn btn-sm {% if active == 'list' %}btn-dark{% else %}btn-outline-secondary{% endif %}" href="{% url 'maintenance:list' %}"><i class="bi bi-list-check"></i> Visits</a>
+  <a class="btn btn-sm {% if active == 'calendar' %}btn-dark{% else %}btn-outline-secondary{% endif %}" href="{% url 'maintenance:calendar' %}"><i class="bi bi-calendar3"></i> Calendar</a>
+  <a class="btn btn-sm {% if active == 'compliance' %}btn-dark{% else %}btn-outline-secondary{% endif %}" href="{% url 'maintenance:compliance' %}"><i class="bi bi-clipboard-data"></i> Compliance &amp; failures</a>
+  <a class="btn btn-sm btn-outline-primary ms-auto" href="{% url 'maintenance:plan_create' %}"><i class="bi bi-plus-lg"></i> New plan</a>
+</div>

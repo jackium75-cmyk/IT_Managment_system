@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load asset_tags task_tags %}
+{% block title %}{{ record.title }}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'maintenance:list' %}">Maintenance</a></li><li class="breadcrumb-item"><a href="{{ record.asset.get_absolute_url }}">{{ record.asset.tag }}</a></li></ol></nav>
+  <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+    <div><h1>{{ record.title }}</h1><div class="mt-1">{{ record|record_status }} <span class="badge text-bg-light border">{{ record.get_kind_display }}</span></div></div>
+    {% if record.status == "scheduled" %}<div class="d-flex flex-wrap gap-2 no-print">
+      <a class="btn btn-success" href="{% url 'maintenance:complete' record.pk %}"><i class="bi bi-check2-square"></i> Record the work</a>
+      <a class="btn btn-outline-secondary" href="{% url 'maintenance:reschedule' record.pk %}">Reschedule</a>
+      <a class="btn btn-outline-danger" href="{% url 'maintenance:cancel' record.pk %}">Cancel visit</a></div>{% endif %}
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    {% if record.status == "completed" %}
+    <div class="card mb-3"><div class="card-body">
+      {% if record.checklist_results %}<h2 class="h6">Checklist</h2>
+        <ul class="list-unstyled small">{% for c in record.checklist_results %}<li><i class="bi {% if c.result == 'ok' %}bi-check-circle-fill text-success{% elif c.result == 'issue' %}bi-exclamation-circle-fill text-danger{% else %}bi-dash-circle text-muted{% endif %}"></i> {{ c.item }}{% if c.note %} — <em>{{ c.note }}</em>{% endif %}</li>{% endfor %}</ul>{% endif %}
+      <h2 class="h6">Work done</h2><p style="white-space: pre-line;">{{ record.work_done }}</p>
+      {% if record.inspection_results %}<h2 class="h6">Inspection results</h2><p style="white-space: pre-line;">{{ record.inspection_results }}</p>{% endif %}
+      {% if record.problems_found %}<h2 class="h6">Problems found</h2><p style="white-space: pre-line;">{{ record.problems_found }}</p>{% endif %}
+      {% if record.parts_used %}<h2 class="h6">Parts used</h2><p style="white-space: pre-line;">{{ record.parts_used }}</p>{% endif %}
+      {% if record.recommendations %}<h2 class="h6">Recommendations</h2><p style="white-space: pre-line;" class="mb-0">{{ record.recommendations }}</p>{% endif %}
+    </div></div>
+    {% elif record.plan and record.plan.checklist_items %}
+    <div class="card mb-3"><div class="card-header bg-white">Checklist for this visit</div><ul class="list-group list-group-flush">{% for item in record.plan.checklist_items %}<li class="list-group-item small"><i class="bi bi-square"></i> {{ item }}</li>{% endfor %}</ul></div>
+    {% endif %}
+    {% if record.status_reason %}<div class="alert alert-light border small"><strong>{% if record.status == "missed" %}Missed{% elif record.status == "cancelled" %}Cancelled{% else %}Note{% endif %}:</strong> {{ record.status_reason }}</div>{% endif %}
+    <div class="card"><div class="card-header bg-white">Before / after evidence</div><div class="card-body">
+      {% if attachments %}<div class="evidence-grid mb-3">{% for att in attachments %}{% url 'maintenance:attachment' att.pk as file_url %}{% include "evidence/_file.html" with url=file_url %}{% endfor %}</div>{% endif %}
+      <form method="post" action="{% url 'maintenance:attach' record.pk %}" enctype="multipart/form-data" class="evidence-form no-print" novalidate>{% csrf_token %}
+        <div class="row"><div class="col-md-6">{% include "evidence/_upload_field.html" with field=evidence_form.files %}</div>
+          <div class="col-md-3">{% include "includes/field.html" with field=evidence_form.stage %}</div><div class="col-md-3">{% include "includes/field.html" with field=evidence_form.description %}</div></div>
+        <button class="btn btn-sm btn-outline-primary">Upload</button></form>
+    </div></div>
+  </div>
+  <div class="col-lg-4"><div class="card"><div class="card-body"><dl class="row small mb-0">
+    <dt class="col-5">Asset</dt><dd class="col-7"><a href="{{ record.asset.get_absolute_url }}">{{ record.asset }}</a><br>{{ record.asset.location|default:"" }}</dd>
+    {% if record.plan %}<dt class="col-5">Plan</dt><dd class="col-7"><a href="{% url 'maintenance:plan_edit' record.plan_id %}">{{ record.plan.describe }}</a></dd>{% endif %}
+    <dt class="col-5">Due</dt><dd class="col-7">{{ record.due_date|date:"D d M Y"|default:"—" }}{% if record.reschedule_count %}<br><span class="text-muted">originally {{ record.original_due_date|date:"d M Y" }}, moved {{ record.reschedule_count }}×</span>{% endif %}</dd>
+    <dt class="col-5">Responsible</dt><dd class="col-7">{% if record.responsible %}{{ record.responsible.get_full_name|default:record.responsible.username }}{% else %}—{% endif %}</dd>
+    {% if record.completed_on %}<dt class="col-5">Done</dt><dd class="col-7">{{ record.completed_on|date:"d M Y" }} by {{ record.performed_by.get_full_name|default:record.performed_by.username }}</dd>{% endif %}
+    {% if record.cost is not None %}<dt class="col-5">Cost</dt><dd class="col-7">{{ record.cost }} {{ record.currency }}</dd>{% endif %}
+    {% if record.task %}<dt class="col-5">Planner task</dt><dd class="col-7"><a href="{{ record.task.get_absolute_url }}">{{ record.task.number }}</a> {{ record.task|status_badge }}<br><span class="text-muted">Time is recorded on the task.</span></dd>{% endif %}
+    <dt class="col-5">Project</dt><dd class="col-7">
+      <form method="post" action="{% url 'maintenance:set_project' record.pk %}" class="d-flex gap-1">{% csrf_token %}
+        <select name="project" class="form-select form-select-sm" aria-label="Project"><option value="">— none —</option>
+          {% for p in projects %}<option value="{{ p.pk }}" {% if p.pk == record.project_id %}selected{% endif %}>{{ p.code }}</option>{% endfor %}
+          {% if record.project and record.project.status == "completed" %}<option value="{{ record.project_id }}" selected>{{ record.project.code }}</option>{% endif %}</select>
+        <button class="btn btn-sm btn-outline-primary">Link</button></form></dd>
+    {% if record.ticket %}<dt class="col-5">Ticket</dt><dd class="col-7"><a href="{{ record.ticket.get_absolute_url }}">{{ record.ticket.reference }}</a></dd>{% endif %}
+  </dl></div></div></div>
+</div>
+{% endblock %}

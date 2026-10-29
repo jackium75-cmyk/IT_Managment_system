@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Task categories{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <div><h1>Task categories</h1><p class="text-muted small mb-0">Each category maps to an activity type, which groups recorded time in reports.</p></div>
+  <a href="{% url 'tasks:category_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>New category</a>
+</div>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+  <thead><tr><th>Name</th><th>Activity type</th><th>Description</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for c in items %}
+    <tr><td>{{ c.name }}</td><td>{{ c.get_activity_type_display }}</td><td class="small text-muted">{{ c.description }}</td>
+      <td>{% if c.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+      <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'tasks:category_edit' c.pk %}">Edit</a></td></tr>
+  {% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

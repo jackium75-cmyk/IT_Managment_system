@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Change asset status{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'assets:list' %}">Assets</a></li><li class="breadcrumb-item"><a href="{{ asset.get_absolute_url }}">{{ asset.tag }}</a></li></ol></nav>
+  <h1>Change status of {{ asset.tag }}</h1><p class="text-muted mb-0">{{ asset.name }} · currently {{ asset.get_status_display|lower }}</p>
+</div>
+<form method="post" novalidate class="card" style="max-width: 600px;">{% csrf_token %}
+  <div class="card-body">{% include "includes/form_body.html" %}
+    <p class="small text-muted mb-0">The asset stays in the register with its full history. Retiring, disposing or reporting it lost stops its maintenance plans.</p></div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn btn-primary" type="submit">Save</button><a class="btn btn-outline-secondary" href="{{ asset.get_absolute_url }}">Cancel</a></div>
+</form>
+{% endblock %}

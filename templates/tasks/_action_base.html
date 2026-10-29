@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'tasks:list' %}">Tasks</a></li><li class="breadcrumb-item"><a href="{{ task.get_absolute_url }}">{{ task.number }}</a></li></ol></nav>
+  <h1>{% block heading %}{% endblock %}</h1>
+  <p class="text-muted mb-0">{{ task.number }} · {{ task.title }} · planned {{ task.planned_date|date:"D d M Y" }}{% if task.scheduled_start %} {{ task.scheduled_start|time:"H:i" }}{% endif %}</p>
+</div>
+<form method="post" novalidate class="card" style="max-width: 640px;">{% csrf_token %}
+  {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+  <div class="card-body">{% block intro %}{% endblock %}{% include "includes/form_body.html" %}</div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn {% block button_class %}btn-primary{% endblock %}" type="submit">{% block button %}Save{% endblock %}</button>
+    <a class="btn btn-outline-secondary" href="{{ task.get_absolute_url }}">Cancel</a></div>
+</form>
+{% endblock %}

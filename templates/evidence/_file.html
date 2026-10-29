@@ -1,0 +1,17 @@
+{# Renders one evidence file. Expects: att, url (view URL), hide_url (optional) #}
+<figure class="evidence-item card m-0">
+  {% if att.is_image %}
+    <a href="{{ url }}" target="_blank" rel="noopener"><img src="{{ url }}" alt="{{ att.description|default:att.original_name }}" class="card-img-top evidence-thumb" loading="lazy"></a>
+  {% elif att.is_video %}
+    <video src="{{ url }}" controls preload="metadata" class="card-img-top evidence-thumb bg-dark"></video>
+  {% else %}
+    <a href="{{ url }}" target="_blank" rel="noopener" class="evidence-doc d-flex align-items-center justify-content-center text-decoration-none">
+      <i class="bi bi-file-earmark-{% if att.content_type == 'application/pdf' %}pdf{% elif 'sheet' in att.content_type or att.content_type == 'text/csv' %}spreadsheet{% elif 'word' in att.content_type %}word{% else %}text{% endif %} fs-1"></i></a>
+  {% endif %}
+  <figcaption class="card-body p-2 small">
+    <div class="text-truncate" title="{{ att.original_name }}">{{ att.original_name }}</div>
+    <div class="text-muted">{{ att.size_display }}{% if att.stage %} · {{ att.get_stage_display }}{% endif %}{% if att.is_internal %} · <span class="text-danger">IT only</span>{% endif %}</div>
+    {% if att.description %}<div>{{ att.description }}</div>{% endif %}
+    <div class="d-flex gap-2"><a href="{{ url }}?download=1">Download</a>{% if hide_url %}<a href="{{ hide_url }}" class="text-danger">Remove</a>{% endif %}</div>
+  </figcaption>
+</figure>

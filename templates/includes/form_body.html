@@ -1,0 +1,4 @@
+{% if form.non_field_errors %}
+  <div class="alert alert-danger" role="alert">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>
+{% endif %}
+{% for field in form %}{% include "includes/field.html" %}{% endfor %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Search{% endblock %}
+{% block content %}
+<div class="page-header mb-3"><h1>Search</h1></div>
+<form method="get" class="mb-3" role="search" style="max-width: 640px;">
+  <div class="input-group"><input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Ticket, task, asset tag, serial, IP, project, error code…" aria-label="Search" autofocus>
+    <button class="btn btn-primary"><i class="bi bi-search"></i> Search</button></div>
+  <div class="form-text">Only records you are allowed to see are searched.</div>
+</form>
+{% if q %}
+  {% if total %}<p class="text-muted small">{{ total }} result{{ total|pluralize }} for “{{ q }}”.</p>{% else %}<p class="text-muted">Nothing found for “{{ q }}”.</p>{% endif %}
+  <div class="row g-3">
+  {% for name, icon, items in groups %}
+    <div class="col-lg-6"><div class="card h-100"><div class="card-header bg-white"><i class="bi bi-{{ icon }}"></i> {{ name }} <span class="badge text-bg-light border">{{ items|length }}</span></div>
+      <ul class="list-group list-group-flush">{% for ref, title, status, url in items %}
+        <li class="list-group-item small d-flex justify-content-between gap-2"><span><a href="{{ url }}">{% if ref %}{{ ref }} {% endif %}{{ title|truncatechars:90 }}</a></span><span class="text-muted text-nowrap">{{ status }}</span></li>
+      {% endfor %}</ul></div></div>
+  {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load task_tags helpdesk_tags %}
+{% block title %}Helpdesk{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <h1>{% if it %}Helpdesk tickets{% else %}My IT requests{% endif %}</h1>
+  <a href="{% url 'helpdesk:create' %}" class="btn btn-primary {% if not it %}report-btn{% endif %}"><i class="bi bi-plus-lg me-1"></i>{% if it %}New ticket{% else %}Report a problem{% endif %}</a>
+</div>
+<ul class="nav nav-pills mb-3 flex-wrap gap-1">
+  {% for key, label in queues.items %}<li class="nav-item"><a class="nav-link {% if queue == key %}active{% endif %}" href="?queue={{ key }}" {% if queue == key %}aria-current="page"{% endif %}>{{ label }}</a></li>{% endfor %}
+</ul>
+<form method="get" class="card card-body mb-3 no-print"><input type="hidden" name="queue" value="{{ queue }}">
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-3"><label class="form-label small" for="f-q">Search</label><input type="search" id="f-q" name="q" value="{{ f.q }}" class="form-control" placeholder="Reference, subject, device{% if it %}, requester{% endif %}"></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-type">Type</label><select id="f-type" name="type" class="form-select"><option value="">Any</option>{% for v, l in types %}<option value="{{ v }}" {% if f.type == v %}selected{% endif %}>{{ l|cut:" (something is not working)"|cut:" (I need something)" }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-cat">Category</label><select id="f-cat" name="category" class="form-select"><option value="">Any</option>{% for c in categories %}<option value="{{ c.pk }}" {% if f.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-pri">Priority</label><select id="f-pri" name="priority" class="form-select"><option value="">Any</option>{% for v, l in priorities %}<option value="{{ v }}" {% if f.priority == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-3"><label class="form-label small" for="f-status">Status</label><select id="f-status" name="status" class="form-select"><option value="">Any</option>{% for v, l in statuses %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    {% if it %}
+    <div class="col-6 col-md-3"><label class="form-label small" for="f-dept">Department</label><select id="f-dept" name="department" class="form-select"><option value="">Any</option>{% for d in departments %}<option value="{{ d.pk }}" {% if f.department == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-3"><label class="form-label small" for="f-ass">Assigned to</label><select id="f-ass" name="assigned" class="form-select"><option value="">Anyone</option>{% for u in officers %}<option value="{{ u.pk }}" {% if f.assigned == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}</select></div>
+    {% endif %}
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-start">Reported from</label><input type="date" id="f-start" name="start" value="{{ f.start }}" class="form-control"></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-end">to</label><input type="date" id="f-end" name="end" value="{{ f.end }}" class="form-control"></div>
+    <div class="col-12 col-md-2 d-flex gap-2"><button class="btn btn-outline-primary flex-fill">Filter</button><a class="btn btn-outline-secondary" href="?queue={{ queue }}">Reset</a></div>
+  </div>
+  {% if resolved_on %}<p class="form-text mb-0 mt-2">Showing tickets resolved on {{ resolved_on|date:"d M Y" }}. <a href="?queue={{ queue }}">Clear</a></p><input type="hidden" name="resolved" value="{{ resolved_on|date:'Y-m-d' }}">{% endif %}
+</form>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+  <thead><tr>
+    <th>{% include "tasks/_sort.html" with key="reference" desc="reference" label="Ticket" %}</th>
+    <th>Subject</th>
+    <th>{% include "tasks/_sort.html" with key="priority" desc="priority" label="Priority" %}</th>
+    <th>{% include "tasks/_sort.html" with key="status" desc="status" label="Status" %}</th>
+    {% if it %}<th>Requester</th><th>Assigned</th><th>{% include "tasks/_sort.html" with key="due" desc="due" label="Target" %}</th>{% endif %}
+    <th>{% include "tasks/_sort.html" with key="created" desc="-created" label="Reported" %}</th>
+  </tr></thead>
+  <tbody>
+  {% for t in page_obj %}
+    <tr>
+      <td class="text-nowrap"><a href="{{ t.get_absolute_url }}">{{ t.reference }}</a></td>
+      <td>{{ t.subject }}<div class="small text-muted">{{ t.category.name }}{% if t.department %} · {{ t.department }}{% endif %}{% if t.reopen_count %} · <span class="text-warning-emphasis">reopened {{ t.reopen_count }}×</span>{% endif %}</div></td>
+      <td>{{ t|priority_badge }}</td>
+      <td>{{ t|ticket_status }}</td>
+      {% if it %}<td>{{ t.requester.get_full_name|default:t.requester.username }}</td>
+      <td>{% if t.assigned_to %}{{ t.assigned_to.get_full_name|default:t.assigned_to.username }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+      <td>{{ t|due_badge }}</td>{% endif %}
+      <td class="text-nowrap small">{{ t.created_at|date:"d M H:i" }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="8" class="text-center text-muted py-4">{% if it %}No tickets in this view.{% else %}You have not reported anything yet. <a href="{% url 'helpdesk:create' %}">Report a problem</a>.{% endif %}</td></tr>
+  {% endfor %}
+  </tbody></table></div></div>
+{% include "includes/pagination.html" %}
+{% endblock %}

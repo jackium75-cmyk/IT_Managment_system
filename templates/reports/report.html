@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ report.title }}{% endblock %}
+{% block extra_head %}<style>
+  @media print { .report-actions { display: none !important; } .card { break-inside: avoid; } main { padding: 0 !important; } }
+  .basis { font-size: .7rem; }
+</style>{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between gap-2 align-items-start mb-3">
+  <div>
+    <p class="text-muted small mb-1">{{ report.hotel_name }} · IT department</p>
+    <h1>{{ report.title }}</h1>
+    <p class="mb-0"><strong>{{ report.period_label }}</strong></p>
+    <p class="small text-muted mb-0">{{ report.filters }} · generated {{ report.generated_at|date:"d M Y H:i" }} by {{ report.generated_by }}</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 report-actions">
+    <a class="btn btn-outline-secondary" href="?{{ query }}&format=pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+    <a class="btn btn-outline-secondary" href="?{{ query }}&format=xlsx"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+    <a class="btn btn-outline-secondary" href="?{{ query }}&format=csv"><i class="bi bi-filetype-csv"></i> CSV</a>
+    <button class="btn btn-outline-secondary" type="button" data-print><i class="bi bi-printer"></i> Print</button>
+    <a class="btn btn-primary" href="{% url 'reports:centre' %}">New report</a>
+  </div>
+</div>
+{% if report.bases_used %}<p class="small text-muted report-actions">Labels on figures:
+  {% for key, label, text in report.bases_used %}<span class="badge text-bg-light border basis" title="{{ text }}">{{ label }}</span> {{ text }} {% endfor %}</p>{% endif %}
+
+{% for s in report.sections %}
+  <div class="card mb-3"><div class="card-header bg-white fw-semibold">{{ s.title }}</div>
+  {% if s.kind == "metrics" %}
+    <div class="card-body"><div class="row g-3">
+      {% for m in s.metrics %}<div class="col-6 col-md-4 col-xl-3"><div class="border rounded p-2 h-100">
+        <div class="fs-5 fw-bold">{{ m.value }}</div><div class="small">{{ m.label }}</div>
+        <span class="badge {% if m.basis == 'verified' %}text-bg-success{% elif m.basis == 'estimated' %}text-bg-warning{% elif m.basis == 'reported' %}text-bg-info{% else %}text-bg-light border{% endif %} basis">{% if m.basis == 'verified' %}Verified{% elif m.basis == 'estimated' %}Estimated{% elif m.basis == 'reported' %}Reported by IT{% else %}Recorded{% endif %}</span>
+        {% if m.help %}<div class="small text-muted">{{ m.help }}</div>{% endif %}</div></div>{% endfor %}
+    </div></div>
+  {% elif s.kind == "table" %}
+    {% if s.rows %}<div class="table-responsive"><table class="table table-sm table-striped align-middle mb-0">
+      <thead><tr>{% for c in s.columns %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for row, url in s.pairs %}<tr>{% for v in row %}<td>{% if forloop.first and url %}<a href="{{ url }}">{{ v }}</a>{% else %}{{ v|linebreaksbr }}{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table></div>{% else %}<div class="card-body text-muted small">{{ s.empty }}</div>{% endif %}
+  {% elif s.kind == "text" %}
+    <div class="card-body">{% for heading, body in s.paragraphs %}<p class="mb-1 fw-semibold small">{{ heading }}</p><p style="white-space: pre-line;">{{ body }}</p>{% empty %}<p class="text-muted small mb-0">{{ s.empty }}</p>{% endfor %}</div>
+  {% elif s.kind == "chart" %}
+    <div class="card-body"><div style="height: 280px;"><canvas data-chart="{{ s.dom_id }}" role="img" aria-label="{{ s.title }}"></canvas></div></div>
+    {{ s.chart|json_script:s.dom_id }}
+  {% endif %}
+  {% if s.note %}<div class="card-footer bg-white small text-muted">{{ s.note }}</div>{% endif %}
+  </div>
+{% endfor %}
+
+<div class="card"><div class="card-header bg-white fw-semibold">Definitions</div><div class="card-body"><dl class="row small mb-0">
+  {% for term, text in report.definitions %}<dt class="col-md-3">{{ term }}</dt><dd class="col-md-9">{{ text }}</dd>{% endfor %}
+</dl></div></div>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>{% endblock %}

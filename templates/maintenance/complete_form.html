@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{% if corrective %}Record repair{% else %}Record maintenance{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'maintenance:list' %}">Maintenance</a></li>
+    {% with a=record.asset|default:asset %}<li class="breadcrumb-item"><a href="{{ a.get_absolute_url }}">{{ a.tag }}</a></li>{% endwith %}</ol></nav>
+  {% if corrective %}<h1>Record a repair on {{ asset.tag }} {{ asset.name }}</h1>{% if ticket %}<p class="text-muted mb-0">For ticket <a href="{{ ticket.get_absolute_url }}">{{ ticket.reference }}</a> {{ ticket.subject }}</p>{% endif %}
+  {% else %}<h1>Record maintenance: {{ record.title }}</h1><p class="text-muted mb-0">{{ record.asset }} · due {{ record.due_date|date:"d M Y" }}</p>{% endif %}
+</div>
+<form method="post" enctype="multipart/form-data" novalidate class="card evidence-form" style="max-width: 900px;">{% csrf_token %}
+  {% if corrective %}<input type="hidden" name="asset_id" value="{{ asset.pk }}">{% if ticket %}<input type="hidden" name="ticket_id" value="{{ ticket.pk }}">{% endif %}{% endif %}
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+    {% if form.checklist %}
+      <h2 class="h6">Checklist</h2>
+      <div class="table-responsive mb-3"><table class="table table-sm align-middle">
+        {% for result, note in form.checklist_rows %}<tr><th scope="row" class="fw-normal">{{ result.label }}</th>
+          <td class="text-nowrap">{% for choice in result %}<span class="form-check form-check-inline me-2">{{ choice.tag }}<label class="form-check-label" for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label></span>{% endfor %}</td>
+          <td style="min-width: 200px;">{{ note }}{% for e in note.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</td></tr>{% endfor %}
+      </table></div>
+    {% endif %}
+    <div class="row">
+      {% for field in form %}{% if not field.name|slice:":6" == "check_" and not field.name|slice:":5" == "note_" and field.name != "files" %}
+        <div class="{% if field.name == 'completed_on' or field.name == 'cost' or field.name == 'currency' or field.name == 'asset_condition' or field.name == 'asset_status' %}col-md-4{% else %}col-12{% endif %}">{% include "includes/field.html" %}</div>
+      {% endif %}{% endfor %}
+    </div>
+    {% include "evidence/_upload_field.html" with field=form.files %}
+  </div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn btn-success" type="submit">Save</button>
+    <a class="btn btn-outline-secondary" href="{% if record %}{{ record.get_absolute_url }}{% else %}{{ asset.get_absolute_url }}{% endif %}">Cancel</a></div>
+</form>
+{% endblock %}

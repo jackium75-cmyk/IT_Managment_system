@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load task_tags %}
+{% block title %}Tasks{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <h1>Tasks</h1>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{% url 'tasks:unplanned_create' %}" class="btn btn-outline-warning"><i class="bi bi-lightning me-1"></i>Unplanned work</a>
+    <a href="{% url 'tasks:create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>New task</a>
+  </div>
+</div>
+<ul class="nav nav-pills mb-3 flex-wrap">
+  {% for key, label in views.items %}
+    <li class="nav-item"><a class="nav-link {% if view == key %}active{% endif %}" href="?view={{ key }}" {% if view == key %}aria-current="page"{% endif %}>{{ label }}</a></li>
+  {% endfor %}
+</ul>
+<form method="get" class="card card-body mb-3 no-print">
+  <input type="hidden" name="view" value="{{ view }}">
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-3"><label class="form-label small" for="f-q">Search</label><input type="search" id="f-q" name="q" value="{{ f.q }}" class="form-control" placeholder="Number, title, description"></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-status">Status</label>
+      <select id="f-status" name="status" class="form-select"><option value="">Any</option><option value="open" {% if f.status == "open" %}selected{% endif %}>All open</option>
+        {% for v, l in statuses %}<option value="{{ v }}" {% if f.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-cat">Category</label>
+      <select id="f-cat" name="category" class="form-select"><option value="">Any</option>
+        {% for c in categories %}<option value="{{ c.pk }}" {% if f.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-pri">Priority</label>
+      <select id="f-pri" name="priority" class="form-select"><option value="">Any</option>
+        {% for v, l in priorities %}<option value="{{ v }}" {% if f.priority == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-3"><label class="form-label small" for="f-ass">Assigned to</label>
+      <select id="f-ass" name="assigned" class="form-select"><option value="">Anyone</option>
+        {% for u in officers %}<option value="{{ u.pk }}" {% if f.assigned == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-3"><label class="form-label small" for="f-dept">Department</label>
+      <select id="f-dept" name="department" class="form-select"><option value="">Any</option>
+        {% for d in departments %}<option value="{{ d.pk }}" {% if f.department == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-start">Planned from</label><input type="date" id="f-start" name="start" value="{{ f.start }}" class="form-control"></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-end">Planned to</label><input type="date" id="f-end" name="end" value="{{ f.end }}" class="form-control"></div>
+    <div class="col-6 col-md-2"><div class="form-check mt-4"><input class="form-check-input" type="checkbox" name="late" value="1" id="f-late" {% if f.late == "1" %}checked{% endif %}><label class="form-check-label" for="f-late">Completed late</label></div></div>
+    <div class="col-12 col-md-3 d-flex gap-2"><button class="btn btn-outline-primary flex-fill">Filter</button><a class="btn btn-outline-secondary" href="?view={{ view }}">Reset</a></div>
+  </div>
+  {% if f.done %}<p class="form-text mb-0 mt-2">Showing tasks completed on {{ f.done }}. <a href="?view={{ view }}">Clear</a></p><input type="hidden" name="done" value="{{ f.done }}">{% endif %}
+</form>
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr>
+      <th>{% include "tasks/_sort.html" with key="number" desc="-number" label="Task" %}</th>
+      <th>{% include "tasks/_sort.html" with key="title" desc="title" label="Title" %}</th>
+      <th>{% include "tasks/_sort.html" with key="date" desc="-date" label="Planned" %}</th>
+      <th>{% include "tasks/_sort.html" with key="priority" desc="priority" label="Priority" %}</th>
+      <th>{% include "tasks/_sort.html" with key="status" desc="status" label="Status" %}</th>
+      <th>{% include "tasks/_sort.html" with key="assigned" desc="assigned" label="Assigned" %}</th>
+    </tr></thead>
+    <tbody>
+    {% for t in page_obj %}
+      <tr>
+        <td class="text-nowrap"><a href="{{ t.get_absolute_url }}">{{ t.number }}</a>{% if t.is_unplanned %} <i class="bi bi-lightning-fill text-warning" title="Unplanned work"></i>{% endif %}{% if t.recurrence_id %} <i class="bi bi-arrow-repeat text-muted" title="Recurring"></i>{% endif %}</td>
+        <td>{{ t.title }}<div class="small text-muted">{{ t.category }}{% if t.department %} · {{ t.department }}{% endif %}</div></td>
+        <td class="text-nowrap">{{ t.planned_date|date:"D d M" }}{% if t.scheduled_start %} <span class="text-muted small">{{ t.scheduled_start|time:"H:i" }}</span>{% endif %}
+          {% if t.is_overdue %}<span class="badge text-bg-danger ms-1">Overdue</span>{% elif t.completed_late %}<span class="badge text-bg-warning ms-1">Late</span>{% endif %}
+          {% if t.was_rescheduled %}<i class="bi bi-arrow-right-circle text-muted ms-1" title="Originally planned for {{ t.original_planned_date|date:'d M Y' }}"></i>{% endif %}</td>
+        <td>{{ t|priority_badge }}</td>
+        <td>{{ t|status_badge }}</td>
+        <td>{{ t.assigned_to.get_full_name|default:t.assigned_to.username }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-4">No tasks match.{% if view == "mine" %} <a href="{% url 'tasks:create' %}">Plan a task</a>.{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% include "includes/pagination.html" %}
+{% endblock %}

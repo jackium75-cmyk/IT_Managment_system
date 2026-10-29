@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+db.sqlite3
+logs/*.log*
+media_private/*
+!media_private/.gitkeep
+staticfiles/
+backups/
+# Left by restore_backup until checked and deleted
+media_private.before-restore-*/
+media_private.restoring-*/

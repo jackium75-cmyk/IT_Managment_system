@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static task_tags %}
+{% block title %}Workload analytics{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between gap-2 align-items-end mb-3">
+  <div><h1>Workload &amp; performance analytics</h1>
+    <p class="text-muted small mb-0">{{ ctx.start|date:"d M Y" }} – {{ ctx.end|date:"d M Y" }} · {{ ctx.filter_description }}</p></div>
+  <a href="{% url 'reports:centre' %}" class="btn btn-outline-secondary no-print"><i class="bi bi-file-earmark-bar-graph"></i> Reports centre</a>
+</div>
+<form method="get" class="card card-body mb-3 no-print"><div class="row g-2 align-items-end">
+  <input type="hidden" name="kind" value="custom">
+  <div class="col-6 col-md-3">{% include "includes/field.html" with field=form.start %}</div>
+  <div class="col-6 col-md-3">{% include "includes/field.html" with field=form.end %}</div>
+  <div class="col-6 col-md-3">{% include "includes/field.html" with field=form.department %}</div>
+  <div class="col-6 col-md-3">{% include "includes/field.html" with field=form.technician %}</div>
+  <div class="col-12"><button class="btn btn-primary">Apply</button> <span class="small text-muted">Default: the last 90 days.</span></div>
+</div></form>
+
+{% if d.insights %}
+<div class="alert alert-info"><h2 class="h6"><i class="bi bi-lightbulb"></i> Where workload is changing</h2>
+  <ul class="mb-0">{% for i in d.insights %}<li>{{ i }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  {% with tf=d.tf %}
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="metric-value text-success">{% if d.planned_rate is not None %}{{ d.planned_rate }}%{% else %}—{% endif %}</div><div class="small">Planned work completed</div><div class="small text-muted">{{ tf.planned_done }} of {{ tf.planned }} planned tasks</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="metric-value text-warning">{{ tf.late }}</div><div class="small">Tasks completed late</div><div class="small text-muted">{% if d.late_rate is not None %}{{ d.late_rate }}% of completed planned tasks{% endif %}</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="metric-value text-danger">{{ tf.unplanned }}</div><div class="small">Emergency / unplanned interruptions</div><div class="small text-muted">{{ d.time.unplanned_minutes|minutes }} of unplanned time</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="metric-value">{{ d.time.total_minutes|minutes }}</div><div class="small">Total recorded working time</div><div class="small text-muted">Logged by IT staff; each minute counted once</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="metric-value">{{ d.handled }}</div><div class="small">Tickets handled</div><div class="small text-muted">{{ d.resolved }} resolved</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="metric-value">{{ d.median }}</div><div class="small">Median resolution time</div><div class="small text-muted">Average {{ d.avg }}; waiting excluded</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="metric-value">{% if d.recurring.0 is not None %}{{ d.recurring.0 }}%{% else %}—{% endif %}</div><div class="small">Recurring incident rate</div><div class="small text-muted">{{ d.recurring.1 }} of {{ d.recurring.2 }} incidents repeated within 30 days</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="metric-value">{% if d.compliance.rate is not None %}{{ d.compliance.rate }}%{% else %}—{% endif %}</div><div class="small">Preventive maintenance completed on time</div><div class="small text-muted">{{ d.compliance.on_time }} on time · {{ d.compliance.late }} late · {{ d.compliance.missed }} missed</div></div></div></div>
+  {% endwith %}
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header bg-white">Where the time goes</div><div class="card-body">
+    {% for name, m in d.groups %}<div class="d-flex justify-content-between small"><span>{{ name }}</span><span>{{ m|minutes }}</span></div>
+      <div class="progress mb-2" style="height: 6px;" role="progressbar" aria-label="{{ name }}"><div class="progress-bar" style="width: {% widthratio m d.time.total_minutes 100 %}%"></div></div>
+    {% empty %}<p class="text-muted small mb-0">No time recorded in this period.</p>{% endfor %}
+    <p class="form-text mb-0">Support includes emergencies; maintenance includes system checks and security work; administration includes meetings, documentation and training.</p>
+  </div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header bg-white">Backlog now</div><div class="card-body">
+    <p class="mb-2"><strong>{{ d.backlog.tickets }}</strong> open tickets (oldest {{ d.backlog.oldest_days }} days) · <strong>{{ d.backlog.overdue_tasks }}</strong> overdue tasks</p>
+    <table class="table table-sm mb-2"><thead><tr><th>Ticket age</th><th class="text-end">Open</th></tr></thead><tbody>
+      {% for label, n in d.backlog.buckets %}<tr><td>{{ label }}</td><td class="text-end">{{ n }}</td></tr>{% endfor %}</tbody></table>
+    <p class="small text-muted mb-0"><i class="bi bi-hourglass-split"></i> Outside IT's control: {{ d.backlog.waiting }} ticket(s) waiting on the requester, vendors, parts or approval; {{ d.backlog.tasks_waiting }} overdue task(s) blocked or waiting.
+      {% if d.waiting_share is not None %} Resolved tickets spent {{ d.waiting_share }}% of their elapsed time waiting on others.{% endif %}</p>
+  </div></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-8"><div class="card h-100"><div class="card-header bg-white">12-week trend</div><div class="card-body">
+    <div style="height: 260px;"><canvas data-chart="trend-chart" role="img" aria-label="Weekly trend of requests and backlog"></canvas></div>
+    <p class="form-text mb-0">Requests received and resolved per week, and open tickets at the end of each week. A rising backlog line means intake is outpacing resolution.</p>
+  </div></div></div>
+  <div class="col-lg-4"><div class="card h-100"><div class="card-header bg-white">Resolution by priority</div><div class="card-body">
+    <table class="table table-sm mb-2"><thead><tr><th>Priority</th><th class="text-end">Resolved</th><th class="text-end">Median</th></tr></thead><tbody>
+      {% for p, n, m in d.by_priority %}<tr><td>{{ p }}</td><td class="text-end">{{ n }}</td><td class="text-end">{{ m }}</td></tr>{% endfor %}</tbody></table>
+    <p class="small text-muted mb-0">Compare like with like: a critical outage and a password reset are not the same amount of work.</p>
+  </div></div></div>
+</div>
+{{ trend_chart|json_script:"trend-chart" }}
+
+{% if d.officers %}
+<div class="card mb-3"><div class="card-header bg-white">Workload by IT staff member</div>
+  <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    <thead><tr><th>Name</th><th class="text-end">Hours</th><th class="text-end">Unplanned</th><th class="text-end">Resolved</th><th class="text-end">Critical/high</th><th class="text-end">Median res.</th><th class="text-end">Waiting share</th><th class="text-end">Planned done</th></tr></thead>
+    <tbody>{% for row in d.officers %}<tr>{% for v in row %}<td class="{% if forloop.first %}text-nowrap{% else %}text-end{% endif %}">{{ v }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+  <div class="card-footer bg-white small text-muted">Listed alphabetically, not ranked. Ticket counts alone do not measure performance: consider priority mix, waiting time outside IT's control, unplanned interruptions and how consistently time is logged. “Unplanned” is the share of recorded hours spent on unplanned work; “Waiting share” is the share of resolved tickets' elapsed time spent waiting on others.</div>
+</div>
+{% endif %}
+<p class="small text-muted">Documented improvements in this period: {{ d.improvements }} completed project(s). All figures come from records in the system; nothing is estimated.</p>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>{% endblock %}

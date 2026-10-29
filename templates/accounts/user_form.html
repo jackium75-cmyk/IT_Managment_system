@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{% if creating %}New user{% else %}Edit {{ obj.username }}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'accounts:user_list' %}">Users</a></li>
+    {% if obj %}<li class="breadcrumb-item"><a href="{% url 'accounts:user_detail' obj.pk %}">{{ obj.username }}</a></li>{% endif %}</ol></nav>
+  <h1>{% if creating %}New user{% else %}Edit {{ obj.get_full_name|default:obj.username }}{% endif %}</h1>
+</div>
+<form method="post" novalidate class="card" style="max-width: 760px;">{% csrf_token %}
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+    <div class="row">
+      {% for field in form %}
+        <div class="{% if field.name == 'is_active' %}col-12{% else %}col-md-6{% endif %}">{% include "includes/field.html" %}</div>
+      {% endfor %}
+    </div>
+    {% if creating %}<p class="text-muted small">The user will be asked to replace the temporary password at first sign-in.</p>{% endif %}
+  </div>
+  <div class="card-footer bg-white d-flex gap-2">
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-outline-secondary" href="{% if obj %}{% url 'accounts:user_detail' obj.pk %}{% else %}{% url 'accounts:user_list' %}{% endif %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

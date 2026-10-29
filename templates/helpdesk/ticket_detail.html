@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% load task_tags helpdesk_tags %}
+{% block title %}{{ ticket.reference }}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'helpdesk:list' %}">{% if it %}Helpdesk{% else %}My requests{% endif %}</a></li></ol></nav>
+  <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+    <div>
+      <h1>{{ ticket.reference }} · {{ ticket.subject }}</h1>
+      <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
+        {{ ticket|ticket_status }} {{ ticket|priority_badge }}
+        <span class="badge text-bg-light border">{% if ticket.ticket_type == "incident" %}Incident{% else %}Service request{% endif %}</span>
+        {% if it %}{{ ticket|due_badge }}{% endif %}
+        {% if ticket.reopen_count %}<span class="badge text-bg-warning">Reopened {{ ticket.reopen_count }}×</span>{% endif %}
+      </div>
+    </div>
+    {% if it %}
+    <div class="d-flex flex-wrap gap-2 no-print">
+      {% if ticket.is_open %}
+        {% if running %}
+          <form method="post" action="{% url 'tasks:timer_stop' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ ticket.get_absolute_url }}"><button class="btn btn-danger"><i class="bi bi-stop-fill"></i> Stop timer</button></form>
+        {% else %}
+          <form method="post" action="{% url 'helpdesk:timer_start' ticket.pk %}">{% csrf_token %}<button class="btn btn-primary"><i class="bi bi-play-fill"></i> Start work</button></form>
+        {% endif %}
+        {% if ticket.status == "new" %}<a class="btn btn-outline-primary" href="{% url 'helpdesk:status' ticket.pk %}?to=acknowledged">Acknowledge</a>{% endif %}
+        <a class="btn btn-success" href="{% url 'helpdesk:status' ticket.pk %}?to=resolved"><i class="bi bi-check-lg"></i> Resolve</a>
+      {% endif %}
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">More</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          {% for s in transitions %}<li><a class="dropdown-item" href="{% url 'helpdesk:status' ticket.pk %}?to={{ s }}">Set status: {% for v, l in S.choices %}{% if v == s %}{{ l }}{% endif %}{% endfor %}…</a></li>{% endfor %}
+          {% if can_reopen %}<li><a class="dropdown-item" href="{% url 'helpdesk:reopen' ticket.pk %}">Reopen…</a></li>{% endif %}
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{% url 'helpdesk:priority' ticket.pk %}">Change priority…</a></li>
+          <li><a class="dropdown-item" href="{% url 'helpdesk:log_time' ticket.pk %}">Record time…</a></li>
+          <li><a class="dropdown-item" href="{% url 'helpdesk:create_task' ticket.pk %}">Create a task from this ticket</a></li>
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if ticket.status == "resolved" and is_requester %}
+  <div class="alert alert-success d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div><strong>IT has marked this as resolved.</strong> Is the problem fixed?{% if ticket.resolution_details %}<div class="small mt-1">{{ ticket.resolution_details|linebreaksbr }}</div>{% endif %}</div>
+    <div class="d-flex gap-2"><a href="{% url 'helpdesk:confirm' ticket.pk %}" class="btn btn-success">Yes, it's fixed</a><a href="{% url 'helpdesk:reopen' ticket.pk %}" class="btn btn-outline-danger">No, still a problem</a></div>
+  </div>
+{% elif ticket.status == "waiting" and ticket.waiting_on == "requester" and is_requester %}
+  <div class="alert alert-warning"><strong>IT needs more information from you.</strong> Please answer in the conversation below.</div>
+{% elif ticket.status == "closed" and is_requester and can_reopen %}
+  <div class="alert alert-light border small">This ticket is closed. If the problem comes back you can <a href="{% url 'helpdesk:reopen' ticket.pk %}">reopen it</a>.</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3"><div class="card-body">
+      <div class="small text-muted mb-2">Reported {{ ticket.created_at|date:"D d M Y H:i" }} by {{ ticket.requester.get_full_name|default:ticket.requester.username }}</div>
+      <div style="white-space: pre-line;">{{ ticket.description }}</div>
+      {% if initial_files %}<div class="evidence-grid mt-3">
+        {% for att in initial_files %}{% url 'helpdesk:attachment' att.pk as file_url %}{% if it %}{% url 'helpdesk:attachment_hide' att.pk as hide_url %}{% endif %}{% include "evidence/_file.html" with url=file_url hide_url=hide_url %}{% endfor %}
+      </div>{% endif %}
+    </div></div>
+
+    {% if ticket.resolution_details %}
+    <div class="card mb-3 border-success"><div class="card-header bg-success-subtle">Resolution</div><div class="card-body">
+      <div style="white-space: pre-line;">{{ ticket.resolution_details }}</div>
+      {% if it and ticket.root_cause %}<h2 class="h6 mt-3">Root cause</h2><div style="white-space: pre-line;">{{ ticket.root_cause }}</div>{% endif %}
+      {% if it and ticket.verification %}<h2 class="h6 mt-3">Verification</h2><div style="white-space: pre-line;">{{ ticket.verification }}</div>{% endif %}
+    </div></div>
+    {% endif %}
+
+    <div class="card" id="conversation"><div class="card-header bg-white">{% if it %}Activity, troubleshooting and conversation{% else %}Updates and conversation{% endif %}</div>
+      <ul class="list-group list-group-flush">
+        {% for item in timeline %}
+          {% if item.type == "comment" %}{% with c=item.obj %}
+            <li class="list-group-item convo-item k-{{ c.kind }} {% if c.author_id == ticket.requester_id %}from-requester{% else %}from-it{% endif %}">
+              <div class="small text-muted">{{ c.created_at|date:"d M Y H:i" }} · <strong>{{ c.author.get_full_name|default:c.author.username|default:"System" }}</strong>
+                {% if c.kind != "public" %}<span class="badge text-bg-light border">{{ c.get_kind_display }}</span>{% endif %}{% if c.is_question %}<span class="badge text-bg-warning">Question for requester</span>{% endif %}</div>
+              <div style="white-space: pre-line;">{{ c.body }}</div>
+              {% if item.files %}<div class="evidence-grid mt-2">{% for att in item.files %}{% url 'helpdesk:attachment' att.pk as file_url %}{% if it %}{% url 'helpdesk:attachment_hide' att.pk as hide_url %}{% endif %}{% include "evidence/_file.html" with url=file_url hide_url=hide_url %}{% endfor %}</div>{% endif %}
+            </li>{% endwith %}
+          {% elif item.type == "status" %}{% with h=item.obj %}
+            <li class="list-group-item convo-item k-status small text-muted"><i class="bi bi-arrow-right-circle"></i> {{ h.changed_at|date:"d M Y H:i" }} · {{ h.changed_by.get_full_name|default:h.changed_by.username|default:"System" }}:
+              {% if h.is_reopen %}<strong class="text-warning-emphasis">reopened</strong>{% endif %} {{ h.get_from_status_display }} → <strong>{{ h.get_to_status_display }}</strong>{% if h.note %} — {{ h.note }}{% endif %}</li>{% endwith %}
+          {% elif item.type == "time" %}{% with e=item.obj %}
+            <li class="list-group-item convo-item k-time small text-muted {% if e.is_voided %}voided{% endif %}"><i class="bi bi-stopwatch"></i> {{ e.started_at|date:"d M Y H:i" }} · {{ e.user.get_full_name|default:e.user.username }}
+              {% if e.is_running %}timer running…{% else %}worked <strong>{{ e.minutes|minutes }}</strong>{% endif %}{% if e.via_task %} via <a href="{{ e.via_task.get_absolute_url }}">{{ e.via_task.number }}</a>{% endif %}{% if e.note %} — {{ e.note }}{% endif %}
+              {% if e.is_voided %}<span class="text-danger">(void: {{ e.void_reason }})</span>{% elif not e.is_running %} · <a href="{% url 'helpdesk:time_void' e.pk %}">void</a>{% endif %}</li>{% endwith %}
+          {% endif %}
+        {% empty %}<li class="list-group-item text-muted small">No updates yet.</li>{% endfor %}
+      </ul>
+      {% if can_comment %}
+      <div class="card-body border-top no-print">
+        <form method="post" action="{% url 'helpdesk:comment' ticket.pk %}" enctype="multipart/form-data" class="evidence-form" novalidate>{% csrf_token %}
+          {% if it %}<div class="row"><div class="col-md-6">{% include "includes/field.html" with field=comment_form.kind %}</div><div class="col-md-6">{% include "includes/field.html" with field=comment_form.stage %}</div></div>{% endif %}
+          {% include "includes/field.html" with field=comment_form.body %}
+          {% include "evidence/_upload_field.html" with field=comment_form.files %}
+          {% if it %}{% include "includes/field.html" with field=comment_form.internal_files %}{% endif %}
+          <button class="btn btn-primary" type="submit"><i class="bi bi-send"></i> {% if it %}Add{% else %}Send{% endif %}</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3"><div class="card-body">
+      <dl class="row mb-0 small">
+        <dt class="col-5">Requester</dt><dd class="col-7">{{ ticket.requester.get_full_name|default:ticket.requester.username }}{% if ticket.contact_phone %}<br>{{ ticket.contact_phone }}{% endif %}{% if it and ticket.contact_email %}<br>{{ ticket.contact_email }}{% endif %}</dd>
+        <dt class="col-5">Department</dt><dd class="col-7">{{ ticket.department|default:"—" }}</dd>
+        <dt class="col-5">Location</dt><dd class="col-7">{{ ticket.location|default:"—" }}{% if ticket.location_detail %}<br>{{ ticket.location_detail }}{% endif %}</dd>
+        <dt class="col-5">Device</dt><dd class="col-7">{% if it and ticket.asset %}<a href="{{ ticket.asset.get_absolute_url }}">{{ ticket.asset }}</a>{% elif ticket.asset %}{{ ticket.asset.tag }} {{ ticket.asset.name }}{% else %}{{ ticket.affected_device|default:"—" }}{% endif %}</dd>
+        <dt class="col-5">Category</dt><dd class="col-7">{{ ticket.category.name }}{% if ticket.subcategory %} › {{ ticket.subcategory.name }}{% endif %}</dd>
+        <dt class="col-5">Impact</dt><dd class="col-7">{{ ticket.get_impact_display }}<br>{{ ticket.get_urgency_display }}{% if it and ticket.priority_overridden %}<br><span class="text-muted">Priority set manually</span>{% endif %}</dd>
+        <dt class="col-5">Assigned to</dt><dd class="col-7">{% if ticket.assigned_to %}{{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.username }}{% else %}Not yet assigned{% endif %}</dd>
+        {% if it %}
+        <dt class="col-5">Response target</dt><dd class="col-7">{{ ticket.response_due_at|date:"d M H:i" }}<br>{% if ticket.first_response_at %}Responded {{ ticket.first_response_at|date:"d M H:i" }} {% if ticket.first_response_at > ticket.response_due_at %}<span class="badge text-bg-danger">late</span>{% else %}<span class="badge text-bg-success">met</span>{% endif %}{% else %}No response yet{% endif %}</dd>
+        <dt class="col-5">Resolution target</dt><dd class="col-7">{{ ticket.effective_resolution_due|date:"d M H:i" }}{% if ticket.paused_minutes %}<br><span class="text-muted">incl. {{ ticket.paused_minutes|minutes }} waiting</span>{% endif %}</dd>
+        {% endif %}
+        {% if ticket.resolved_at %}<dt class="col-5">Resolved</dt><dd class="col-7">{{ ticket.resolved_at|date:"d M Y H:i" }}{% if it and ticket.resolution_breached %} <span class="badge text-bg-danger">late</span>{% endif %}</dd>{% endif %}
+        {% if ticket.closed_at %}<dt class="col-5">Closed</dt><dd class="col-7">{{ ticket.closed_at|date:"d M Y H:i" }}{% if ticket.confirmed_by_requester %}<br>Confirmed by requester{% endif %}</dd>{% endif %}
+        {% if ticket.feedback_rating or ticket.feedback_comment %}<dt class="col-5">Feedback</dt><dd class="col-7">{% if ticket.feedback_rating %}{{ ticket.feedback_rating }}/5{% endif %} {{ ticket.feedback_comment }}</dd>{% endif %}
+        {% if it %}<dt class="col-5">Time recorded</dt><dd class="col-7"><strong>{{ recorded }}</strong></dd>{% endif %}
+      </dl>
+    </div></div>
+    {% if it %}
+    <div class="card mb-3 no-print"><div class="card-body">
+      <form method="post" action="{% url 'helpdesk:assign' ticket.pk %}" class="mb-2">{% csrf_token %}
+        <label class="form-label small" for="id_assigned_to">Assign to</label>
+        <div class="d-flex gap-2">{{ assign_form.assigned_to }}<button class="btn btn-outline-primary">Save</button></div>
+      </form>
+      {% if ticket.assigned_to_id != user.pk %}<form method="post" action="{% url 'helpdesk:assign' ticket.pk %}">{% csrf_token %}<input type="hidden" name="me" value="1"><button class="btn btn-sm btn-link p-0">Assign to me</button></form>{% endif %}
+      <form method="post" action="{% url 'helpdesk:set_asset' ticket.pk %}" class="mt-3">{% csrf_token %}
+        <label class="form-label small" for="t-asset">Registered asset{% if ticket.affected_device and not ticket.asset %} <span class="text-muted">(reported: “{{ ticket.affected_device }}”)</span>{% endif %}</label>
+        <div class="d-flex gap-2"><select name="asset" id="t-asset" class="form-select form-select-sm"><option value="">— none —</option>
+          {% for a in assets %}<option value="{{ a.pk }}" {% if a.pk == ticket.asset_id %}selected{% endif %}>{{ a.tag }} {{ a.name }}</option>{% endfor %}</select>
+          <button class="btn btn-sm btn-outline-primary">Link</button></div>
+      </form>
+      {% if ticket.asset %}<a class="btn btn-sm btn-outline-secondary mt-2" href="{% url 'maintenance:corrective_create' %}?asset={{ ticket.asset_id }}&ticket={{ ticket.pk }}"><i class="bi bi-wrench"></i> Record repair on {{ ticket.asset.tag }}</a>{% endif %}
+      <form method="post" action="{% url 'helpdesk:set_project' ticket.pk %}" class="mt-3">{% csrf_token %}
+        <label class="form-label small" for="t-project">Project</label>
+        <div class="d-flex gap-2"><select name="project" id="t-project" class="form-select form-select-sm"><option value="">— none —</option>
+          {% for p in projects %}<option value="{{ p.pk }}" {% if p.pk == ticket.project_id %}selected{% endif %}>{{ p.code }} {{ p.name|truncatechars:40 }}</option>{% endfor %}</select>
+          <button class="btn btn-sm btn-outline-primary">Link</button></div>
+      </form>
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'procurement:create' %}?ticket={{ ticket.pk }}{% if ticket.asset_id %}&asset={{ ticket.asset_id }}{% endif %}"><i class="bi bi-cart3"></i> Purchase / repair request</a>
+        {% if ticket.status == "resolved" or ticket.status == "closed" %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'knowledge:create' %}?ticket={{ ticket.pk }}"><i class="bi bi-book"></i> Write up the solution</a>{% endif %}
+      </div>
+    </div></div>
+    <div class="card mb-3 border-info"><div class="card-header bg-info-subtle"><i class="bi bi-lightbulb"></i> Possibly related solutions</div>
+      <ul class="list-group list-group-flush">
+        {% for score, article, reasons, applied in suggestions %}
+          <li class="list-group-item small">
+            <a href="{{ article.get_absolute_url }}" class="fw-semibold">{{ article.title }}</a>
+            {% if article.is_verified %}<span class="badge text-bg-success">verified</span>{% else %}<span class="badge text-bg-light border">unverified</span>{% endif %}
+            <div class="text-muted">Matched on: {{ reasons|join:"; " }}</div>
+            {% if applied %}<div class="text-success"><i class="bi bi-check2"></i> Applied to this ticket</div>
+            {% elif ticket.is_open %}<form method="post" action="{% url 'knowledge:apply' article.pk ticket.pk %}" class="mt-1">{% csrf_token %}<button class="btn btn-sm btn-outline-primary py-0">I'm using this solution</button></form>{% endif %}
+          </li>
+        {% empty %}<li class="list-group-item small text-muted">No documented solution matches this ticket yet.</li>{% endfor %}
+      </ul>
+      {% if suggestions %}<div class="card-footer bg-white small text-muted">Similar symptoms do not always have the same cause. Check that a solution applies before using it.</div>{% endif %}
+    </div>
+    <div class="card mb-3"><div class="card-header bg-white d-flex justify-content-between">Linked tasks <a href="{% url 'helpdesk:create_task' ticket.pk %}" class="small no-print">+ New task</a></div>
+      <ul class="list-group list-group-flush">
+        {% for t in tasks %}<li class="list-group-item small"><a href="{{ t.get_absolute_url }}">{{ t.number }}</a> {{ t.title }} {{ t|status_badge }}<div class="text-muted">{{ t.assigned_to.get_full_name|default:t.assigned_to.username }} · {{ t.planned_date|date:"d M" }}</div></li>
+        {% empty %}<li class="list-group-item small text-muted">None. Create a task to schedule follow-up work; its time is recorded on this ticket.</li>{% endfor %}
+      </ul></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

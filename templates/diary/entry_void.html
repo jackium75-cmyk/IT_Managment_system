@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Void diary entry{% endblock %}
+{% block content %}
+<div class="page-header mb-3"><h1>Void diary entry</h1><p class="text-muted mb-0">{{ entry.title }} · {{ entry.occurred_at|date:"D d M Y H:i" }} · {{ entry.duration_minutes }} min</p></div>
+<form method="post" novalidate class="card" style="max-width: 560px;">{% csrf_token %}
+  <div class="card-body"><p class="small text-muted">The entry stays in the diary, crossed out, with your reason. It is no longer counted.</p>{% include "includes/form_body.html" %}</div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn btn-danger" type="submit">Void entry</button><a class="btn btn-outline-secondary" href="{% url 'diary:detail' entry.pk %}">Cancel</a></div>
+</form>
+{% endblock %}

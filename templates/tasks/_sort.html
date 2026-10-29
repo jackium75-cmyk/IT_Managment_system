@@ -1,0 +1,1 @@
+<a class="sort-link" href="{% if sort == key %}{% querystring sort=desc page=None %}{% else %}{% querystring sort=key page=None %}{% endif %}">{{ label }}{% if sort == key %} <i class="bi bi-caret-up-fill"></i>{% elif sort == desc %} <i class="bi bi-caret-down-fill"></i>{% endif %}</a>

@@ -1,0 +1,9 @@
+Django>=5.2,<5.3
+python-dotenv>=1.0
+psycopg[binary]>=3.2
+waitress>=3.0
+whitenoise>=6.7
+Pillow>=10.4
+reportlab>=4.2
+openpyxl>=3.1
+qrcode>=7.4

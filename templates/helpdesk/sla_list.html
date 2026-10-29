@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Service targets & escalation{% endblock %}
+{% block content %}
+<div class="page-header mb-3"><h1>Service targets &amp; escalation</h1>
+  <p class="text-muted small mb-0">Targets are in minutes of calendar time (the hotel runs 24/7). Time a ticket spends waiting on the requester, a vendor, parts or an approval is not counted against the resolution target.</p></div>
+<form method="post" novalidate class="card mb-4" style="max-width: 760px;">{% csrf_token %}
+  <div class="table-responsive"><table class="table align-middle mb-0">
+    <thead><tr><th>Priority</th><th>First response within (min)</th><th>Resolve within (min)</th></tr></thead>
+    <tbody>{% for label, target, form in rows %}
+      <tr><th scope="row">{{ label }}</th>
+        <td>{{ form.response_minutes }}{% for e in form.response_minutes.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</td>
+        <td>{{ form.resolution_minutes }}{% for e in form.resolution_minutes.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}</td></tr>
+    {% endfor %}</tbody></table></div>
+  <div class="card-footer bg-white"><button class="btn btn-primary">Save targets</button></div>
+</form>
+<div class="d-flex justify-content-between align-items-center mb-2"><h2 class="h5 mb-0">Escalation rules</h2><a class="btn btn-outline-primary btn-sm" href="{% url 'helpdesk:rule_create' %}">+ New rule</a></div>
+<p class="small text-muted">Rules are checked every few minutes. Each rule notifies people once per ticket (again if the ticket is reopened). Schedule <code>python manage.py run_helpdesk_jobs</code> so this happens even when nobody is signed in.</p>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+  <thead><tr><th>Rule</th><th>When</th><th>Priorities</th><th>Notifies</th><th>Status</th></tr></thead>
+  <tbody>{% for r in rules %}
+    <tr><td><a href="{% url 'helpdesk:rule_edit' r.pk %}">{{ r.name }}</a></td>
+      <td>{{ r.get_trigger_display }}{% if r.threshold %} ({{ r.threshold }}{% if r.trigger == "resolution_warning" %}%{% else %} min{% endif %}){% endif %}</td>
+      <td>{{ r.priorities|default:"All" }}</td>
+      <td class="small">{% if r.notify_assignee %}Assignee {% endif %}{% if r.notify_it_staff %}IT staff {% endif %}{% if r.notify_admins %}Administrators {% endif %}{% if r.notify_department_head %}Department head{% endif %}</td>
+      <td>{% if r.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Off</span>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="5" class="text-muted text-center py-3">No rules.</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

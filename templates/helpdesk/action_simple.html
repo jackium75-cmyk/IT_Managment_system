@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'helpdesk:list' %}">Helpdesk</a></li><li class="breadcrumb-item"><a href="{{ ticket.get_absolute_url }}">{{ ticket.reference }}</a></li></ol></nav>
+  <h1>{{ heading }}</h1><p class="text-muted mb-0">{{ ticket.reference }} · {{ ticket.subject }}</p>
+</div>
+<form method="post" novalidate class="card" style="max-width: 640px;">{% csrf_token %}
+  <div class="card-body">{% if intro %}<p class="small text-muted">{{ intro }}</p>{% endif %}{% include "includes/form_body.html" %}</div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn {{ button_class|default:'btn-primary' }}" type="submit">{{ button|default:"Save" }}</button>
+    <a class="btn btn-outline-secondary" href="{{ ticket.get_absolute_url }}">Cancel</a></div>
+</form>
+{% endblock %}

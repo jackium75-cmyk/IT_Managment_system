@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Departments{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <h1>Departments</h1>
+  <a href="{% url 'accounts:department_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>New department</a>
+</div>
+<form method="get" class="card card-body mb-3 no-print"><div class="row g-2 align-items-end">
+  <div class="col-12 col-md-5"><label class="form-label small" for="f-q">Search</label><input type="search" id="f-q" name="q" value="{{ q }}" class="form-control"></div>
+  {% include "includes/status_filter.html" %}
+  <div class="col-12 col-md-3 d-flex gap-2"><button class="btn btn-outline-primary flex-fill">Filter</button><a class="btn btn-outline-secondary" href="{% url 'accounts:department_list' %}">Reset</a></div>
+</div></form>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+  <thead><tr><th>Code</th><th>Name</th><th>Head</th><th class="text-end">Active users</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for d in page_obj %}
+    <tr><td><span class="badge text-bg-light border">{{ d.code }}</span></td><td>{{ d.name }}</td>
+      <td>{% if d.head %}{{ d.head.get_full_name|default:d.head.username }}{% else %}—{% endif %}</td>
+      <td class="text-end"><a href="{% url 'accounts:user_list' %}?department={{ d.pk }}">{{ d.member_count }}</a></td>
+      <td>{% if d.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+      <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:department_edit' d.pk %}">Edit</a></td></tr>
+  {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No departments found.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% include "includes/pagination.html" %}
+{% endblock %}

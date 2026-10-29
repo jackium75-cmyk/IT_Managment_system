@@ -1,0 +1,8 @@
+<div class="col-6 col-md-2">
+  <label class="form-label small" for="f-status">Status</label>
+  <select name="status" id="f-status" class="form-select">
+    <option value="active" {% if status == "active" %}selected{% endif %}>Active</option>
+    <option value="inactive" {% if status == "inactive" %}selected{% endif %}>Inactive</option>
+    <option value="all" {% if status == "all" %}selected{% endif %}>All</option>
+  </select>
+</div>

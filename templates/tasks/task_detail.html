@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load task_tags %}
+{% block title %}{{ task.number }}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'tasks:list' %}">Tasks</a></li></ol></nav>
+  <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+    <div>
+      <h1>{{ task.number }} · {{ task.title }}</h1>
+      <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
+        {{ task|status_badge }} {{ task|priority_badge }}
+        {% if task.is_unplanned %}<span class="badge text-bg-warning"><i class="bi bi-lightning-fill"></i> Unplanned</span>{% endif %}
+        {% if task.recurrence %}<a class="badge text-bg-light border text-decoration-none" href="{% url 'tasks:recurring_edit' task.recurrence_id %}"><i class="bi bi-arrow-repeat"></i> {{ task.recurrence.describe }}</a>{% endif %}
+        {% if task.is_overdue %}<span class="badge text-bg-danger">Overdue</span>{% endif %}
+        {% if task.completed_late %}<span class="badge text-bg-warning">Completed late</span>{% endif %}
+      </div>
+    </div>
+    {% if can_modify %}
+    <div class="d-flex flex-wrap gap-2 no-print">
+      {% if not task.is_closed %}
+        {% if running %}
+          <form method="post" action="{% url 'tasks:timer_stop' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ task.get_absolute_url }}"><button class="btn btn-danger"><i class="bi bi-stop-fill"></i> Stop timer</button></form>
+        {% else %}
+          <form method="post" action="{% url 'tasks:timer_start' task.pk %}">{% csrf_token %}<button class="btn btn-primary"><i class="bi bi-play-fill"></i> Start work</button></form>
+        {% endif %}
+        <a class="btn btn-success" href="{% url 'tasks:complete' task.pk %}"><i class="bi bi-check-lg"></i> Complete</a>
+        <a class="btn btn-outline-secondary" href="{% url 'tasks:reschedule' task.pk %}"><i class="bi bi-calendar-event"></i> Reschedule</a>
+        <a class="btn btn-outline-warning" href="{% url 'tasks:unplanned_create' %}?interrupts={{ task.pk }}" title="Record emergency work that interrupted this task"><i class="bi bi-lightning"></i> Interrupted</a>
+      {% endif %}
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">More</button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="{% url 'tasks:status' task.pk %}">{% if task.is_closed %}Reopen…{% else %}Change status…{% endif %}</a></li>
+          <li><a class="dropdown-item" href="{% url 'tasks:log_time' task.pk %}">Record time…</a></li>
+          <li><a class="dropdown-item" href="{% url 'tasks:edit' task.pk %}">Edit details</a></li>
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% if running %}<div class="alert alert-primary py-2"><i class="bi bi-stopwatch"></i> Timer running since {{ running.started_at|time:"H:i" }} by {{ running.user.get_full_name|default:running.user.username }}.</div>{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-body">
+      {% if task.description %}<h2 class="h6">Description</h2><p style="white-space: pre-line;">{{ task.description }}</p>{% endif %}
+      {% if task.expected_outcome %}<h2 class="h6">Expected outcome</h2><p style="white-space: pre-line;">{{ task.expected_outcome }}</p>{% endif %}
+      {% if task.completion_notes %}<h2 class="h6 text-success">Completion notes</h2><p style="white-space: pre-line;">{{ task.completion_notes }}</p>{% endif %}
+      {% if task.delay_reason %}<h2 class="h6 text-warning">Latest reason for delay / non-completion</h2><p style="white-space: pre-line;">{{ task.delay_reason }}</p>{% endif %}
+      {% if task.follow_up_action %}<h2 class="h6">Follow-up action</h2><p style="white-space: pre-line;" class="mb-0">{{ task.follow_up_action }}</p>{% endif %}
+      {% if not task.description and not task.expected_outcome and not task.completion_notes and not task.delay_reason and not task.follow_up_action %}<p class="text-muted mb-0">No description.</p>{% endif %}
+    </div></div>
+
+    <div class="card"><div class="card-header bg-white">Activity timeline</div><div class="card-body">
+      <ul class="timeline mb-3">
+        <li><div class="small text-muted">{{ task.created_at|date:"d M Y H:i" }} · {{ task.created_by.get_full_name|default:task.created_by.username }}</div>
+          {% if task.recurrence %}Generated from the recurring schedule{% else %}Task {% if task.is_unplanned %}recorded as unplanned work{% else %}planned{% endif %}{% endif %} for {{ task.original_planned_date|date:"d M Y" }}.
+          {% if task.interrupted_task %}Interrupted <a href="{{ task.interrupted_task.get_absolute_url }}">{{ task.interrupted_task.number }}</a>.{% endif %}</li>
+        {% for item in timeline %}
+          <li class="k-{{ item.kind }}">
+            <div class="small text-muted">{{ item.at|date:"d M Y H:i" }} · {{ item.who.get_full_name|default:item.who.username|default:"system" }} · {{ item.label }}</div>
+            {% if item.entry %}{% with e=item.entry %}
+              <div class="{% if e.is_voided %}voided{% endif %}">
+                {% if e.is_running %}Timer running…{% else %}Worked <strong>{{ e.minutes|minutes }}</strong> ({{ e.started_at|time:"H:i" }}–{{ e.ended_at|time:"H:i" }}){% endif %}{% if e.is_manual %} <span class="badge text-bg-light border">entered manually</span>{% endif %}{% if e.note %} — {{ e.note }}{% endif %}
+              </div>
+              {% if e.is_voided %}<div class="small text-danger">Voided by {{ e.voided_by.get_full_name|default:e.voided_by.username }}: {{ e.void_reason }}</div>
+              {% elif can_modify and not e.is_running %}<a class="small" href="{% if item.ticket_entry %}{% url 'helpdesk:time_void' e.pk %}?next={{ task.get_absolute_url }}{% else %}{% url 'tasks:time_void' e.pk %}{% endif %}">Void…</a>{% endif %}
+            {% endwith %}{% else %}<div style="white-space: pre-line;">{{ item.body }}</div>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      {% if attachments %}<h2 class="h6">Evidence</h2><div class="evidence-grid mb-3">
+        {% for att in attachments %}{% url 'tasks:attachment' att.pk as file_url %}{% if can_modify %}{% url 'tasks:attachment_hide' att.pk as hide_url %}{% endif %}{% include "evidence/_file.html" with url=file_url hide_url=hide_url %}{% endfor %}
+      </div>{% endif %}
+      {% if can_modify %}
+      <form method="post" action="{% url 'tasks:attach' task.pk %}" enctype="multipart/form-data" class="evidence-form no-print mb-3" novalidate>{% csrf_token %}
+        <div class="row"><div class="col-md-7">{% include "evidence/_upload_field.html" with field=attach_form.files %}</div><div class="col-md-5">{% include "includes/field.html" with field=attach_form.description %}</div></div>
+        <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-paperclip"></i> Attach</button>
+      </form>
+      {% endif %}
+      <form method="post" action="{% url 'tasks:comment' task.pk %}" class="no-print">{% csrf_token %}
+        <label class="form-label small" for="id_body">Add a comment</label>
+        <div class="d-flex gap-2"><textarea name="body" id="id_body" rows="2" class="form-control" required></textarea><button class="btn btn-outline-primary align-self-end">Post</button></div>
+      </form>
+    </div></div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-body">
+      <dl class="row mb-0 small">
+        <dt class="col-5">Category</dt><dd class="col-7">{{ task.category }}</dd>
+        <dt class="col-5">Assigned to</dt><dd class="col-7">{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</dd>
+        <dt class="col-5">Planned</dt><dd class="col-7">{{ task.planned_date|date:"D d M Y" }}{% if task.scheduled_start %}, {{ task.scheduled_start|time:"H:i" }}{% if task.scheduled_end %}–{{ task.scheduled_end|time:"H:i" }}{% endif %}{% endif %}</dd>
+        {% if task.was_rescheduled %}<dt class="col-5">Originally</dt><dd class="col-7">{{ task.original_planned_date|date:"D d M Y" }}</dd>{% endif %}
+        <dt class="col-5">Estimated</dt><dd class="col-7">{% if task.estimated_minutes %}{{ task.estimated_minutes|minutes }}{% else %}—{% endif %}</dd>
+        <dt class="col-5">Time recorded</dt><dd class="col-7"><strong>{{ recorded }}</strong></dd>
+        <dt class="col-5">Actual start</dt><dd class="col-7">{{ task.actual_start|date:"d M Y H:i"|default:"—" }}</dd>
+        <dt class="col-5">Completed</dt><dd class="col-7">{{ task.completed_at|date:"d M Y H:i"|default:"—" }}</dd>
+        <dt class="col-5">Department</dt><dd class="col-7">{{ task.department|default:"—" }}</dd>
+        <dt class="col-5">Location</dt><dd class="col-7">{{ task.location|default:"—" }}</dd>
+        <dt class="col-5">Project</dt><dd class="col-7">{% if task.project %}<a href="{{ task.project.get_absolute_url }}">{{ task.project }}</a>{% else %}—{% endif %}</dd>
+        <dt class="col-5">Asset</dt><dd class="col-7">{% if task.asset %}<a href="{{ task.asset.get_absolute_url }}">{{ task.asset }}</a>{% else %}—{% endif %}</dd>
+        <dt class="col-5">Created</dt><dd class="col-7">{{ task.created_at|date:"d M Y H:i" }} by {{ task.created_by.get_full_name|default:task.created_by.username }}</dd>
+        <dt class="col-5">Last updated</dt><dd class="col-7">{{ task.updated_at|date:"d M Y H:i" }}</dd>
+      </dl>
+    </div></div>
+    {% if schedule_changes %}
+    <div class="card mb-3"><div class="card-header bg-white">Schedule history</div><ul class="list-group list-group-flush">
+      {% for c in schedule_changes %}<li class="list-group-item small">{{ c.old_date|date:"d M" }} → <strong>{{ c.new_date|date:"d M Y" }}</strong> · {{ c.changed_by.get_full_name|default:c.changed_by.username }}, {{ c.changed_at|date:"d M H:i" }}<div class="text-muted">{{ c.reason }}</div></li>{% endfor %}
+    </ul></div>
+    {% endif %}
+    {% if interruptions %}
+    <div class="card mb-3"><div class="card-header bg-white">Interrupted by</div><ul class="list-group list-group-flush">
+      {% for t in interruptions %}<li class="list-group-item small"><a href="{{ t.get_absolute_url }}">{{ t.number }}</a> {{ t.title }} {{ t|status_badge }}</li>{% endfor %}
+    </ul></div>
+    {% endif %}
+    <div class="card mb-3"><div class="card-header bg-white">Ticket</div><div class="card-body small">
+      {% if task.related_ticket %}
+        <a href="{{ task.related_ticket.get_absolute_url }}">{{ task.related_ticket.reference }}</a> {{ task.related_ticket.subject }}
+        <p class="text-muted mb-0 mt-1">Time worked on this task is recorded on the ticket, so it is counted once.</p>
+      {% elif can_modify %}
+        <form method="post" action="{% url 'tasks:link_ticket' task.pk %}" class="d-flex gap-2 no-print">{% csrf_token %}
+          <label class="visually-hidden" for="id_reference">Ticket reference</label>
+          <input type="text" name="reference" id="id_reference" class="form-control form-control-sm" placeholder="INC-2026-00012" required>
+          <button class="btn btn-sm btn-outline-primary text-nowrap">Link ticket</button></form>
+        <p class="text-muted mb-0 mt-1">Linking moves any time already recorded here to the ticket.</p>
+      {% else %}Not linked to a ticket.{% endif %}
+    </div></div>
+    {% if task.maintenance_record %}<div class="alert alert-info small"><i class="bi bi-tools"></i> This task is a scheduled maintenance visit. <a href="{{ task.maintenance_record.get_absolute_url }}">Open the maintenance record</a> to tick off the checklist and record the results.</div>{% endif %}
+
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'knowledge:list' %}">Knowledge base</a></li></ol></nav>
+  <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+    <div><h1>{{ article.title }}</h1>
+      <div class="mt-1">{% if article.is_verified %}<span class="badge text-bg-success"><i class="bi bi-patch-check"></i> Verified{% if article.verified_by %} by {{ article.verified_by.get_full_name|default:article.verified_by.username }}{% endif %}</span>{% else %}<span class="badge text-bg-light border">Unverified</span>{% endif %}
+        <span class="badge text-bg-light border">{{ article.get_status_display }}</span>{% if article.category %} <span class="badge text-bg-light border">{{ article.category.name }}</span>{% endif %}{% if article.asset_category %} <span class="badge text-bg-light border">{{ article.asset_category.name }}</span>{% endif %}</div></div>
+    <div class="d-flex gap-2 no-print">
+      <form method="post" action="{% url 'knowledge:verify' article.pk %}">{% csrf_token %}<input type="hidden" name="verified" value="{% if article.is_verified %}0{% else %}1{% endif %}"><button class="btn {% if article.is_verified %}btn-outline-secondary{% else %}btn-outline-success{% endif %}">{% if article.is_verified %}Mark unverified{% else %}Mark verified{% endif %}</button></form>
+      <a class="btn btn-primary" href="{% url 'knowledge:edit' article.pk %}"><i class="bi bi-pencil"></i> Edit</a>
+    </div>
+  </div>
+</div>
+<div class="alert alert-light border small"><i class="bi bi-info-circle"></i> Similar symptoms can have different root causes. Confirm the diagnosis on the actual device before applying this solution.</div>
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card"><div class="card-body">
+    <h2 class="h6">Problem reported</h2><p style="white-space: pre-line;">{{ article.problem }}</p>
+    {% if article.error_codes %}<h2 class="h6">Error codes / messages</h2><p>{% for c in article.error_code_list %}<code class="me-2">{{ c }}</code>{% endfor %}</p>{% endif %}
+    {% if article.symptoms %}<h2 class="h6">Symptoms observed</h2><p style="white-space: pre-line;">{{ article.symptoms }}</p>{% endif %}
+    {% if article.possible_causes %}<h2 class="h6">Possible causes</h2><p style="white-space: pre-line;">{{ article.possible_causes }}</p>{% endif %}
+    {% if article.diagnostics %}<h2 class="h6">Diagnostic steps</h2><p style="white-space: pre-line;">{{ article.diagnostics }}</p>{% endif %}
+    {% if article.commands %}<h2 class="h6">Commands / configuration changes</h2><pre class="bg-body-tertiary p-2 rounded small">{{ article.commands }}</pre>{% endif %}
+    {% if article.parts_replaced %}<h2 class="h6">Parts replaced</h2><p style="white-space: pre-line;">{{ article.parts_replaced }}</p>{% endif %}
+    {% if article.root_cause %}<h2 class="h6">Root cause</h2><p style="white-space: pre-line;">{{ article.root_cause }}</p>{% endif %}
+    <h2 class="h6 text-success">Solution</h2><p style="white-space: pre-line;">{{ article.solution }}</p>
+    {% if article.verification %}<h2 class="h6">Verification</h2><p style="white-space: pre-line;">{{ article.verification }}</p>{% endif %}
+    {% if article.prevention %}<h2 class="h6">Prevention</h2><p style="white-space: pre-line;" class="mb-0">{{ article.prevention }}</p>{% endif %}
+  </div></div></div>
+  <div class="col-lg-4">
+    <div class="card mb-3"><div class="card-body small"><dl class="row mb-0">
+      <dt class="col-5">Written by</dt><dd class="col-7">{{ article.author.get_full_name|default:article.author.username }}</dd>
+      <dt class="col-5">Updated</dt><dd class="col-7">{{ article.updated_at|date:"d M Y" }}</dd>
+      {% if article.source_ticket %}<dt class="col-5">From ticket</dt><dd class="col-7"><a href="{{ article.source_ticket.get_absolute_url }}">{{ article.source_ticket.reference }}</a></dd>{% endif %}
+      {% if article.keywords %}<dt class="col-5">Keywords</dt><dd class="col-7">{{ article.keywords }}</dd>{% endif %}
+    </dl></div></div>
+    <div class="card mb-3"><div class="card-header bg-white">Used on tickets ({{ used_in|length }})</div><ul class="list-group list-group-flush">
+      {% for t in used_in %}<li class="list-group-item small"><a href="{{ t.get_absolute_url }}">{{ t.reference }}</a> {{ t.subject }}</li>{% empty %}<li class="list-group-item small text-muted">Not applied yet.</li>{% endfor %}</ul></div>
+    {% if assets %}<div class="card"><div class="card-header bg-white">Related assets</div><ul class="list-group list-group-flush">{% for a in assets %}<li class="list-group-item small"><a href="{{ a.get_absolute_url }}">{{ a }}</a></li>{% endfor %}</ul></div>{% endif %}
+  </div>
+</div>
+{% endblock %}

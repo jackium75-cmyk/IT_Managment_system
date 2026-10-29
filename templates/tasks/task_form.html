@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{% if creating %}New task{% else %}Edit {{ task.number }}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'tasks:list' %}">Tasks</a></li>
+    {% if task %}<li class="breadcrumb-item"><a href="{{ task.get_absolute_url }}">{{ task.number }}</a></li>{% endif %}</ol></nav>
+  <h1>{% if creating %}Plan a task{% else %}Edit {{ task.number }}{% endif %}</h1>
+</div>
+{% if ticket %}<div class="alert alert-info" style="max-width: 900px;"><i class="bi bi-link-45deg"></i> This task will be linked to <a href="{{ ticket.get_absolute_url }}">{{ ticket.reference }}</a> {{ ticket.subject }}. Time worked on it is recorded on the ticket.</div>{% endif %}
+<form method="post" novalidate class="card" style="max-width: 900px;">{% csrf_token %}
+  {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+    <div class="row">
+      {% for field in form %}
+        <div class="{% if field.name in 'title description expected_outcome follow_up_action' %}col-12{% elif field.name == 'planned_date' or field.name == 'scheduled_start' or field.name == 'scheduled_end' or field.name == 'estimated_minutes' %}col-6 col-md-3{% else %}col-md-6{% endif %}">{% include "includes/field.html" %}</div>
+      {% endfor %}
+    </div>
+    {% if not creating %}<p class="text-muted small mb-0">To change the date or time, use <a href="{% url 'tasks:reschedule' task.pk %}">Reschedule</a>. The original plan and the reason are kept.</p>{% endif %}
+  </div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-outline-secondary" href="{% if task %}{{ task.get_absolute_url }}{% else %}{% url 'tasks:list' %}{% endif %}">Cancel</a></div>
+</form>
+{% endblock %}

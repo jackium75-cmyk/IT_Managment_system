@@ -1,0 +1,29 @@
+{% load task_tags %}
+<div class="card planner-item p-{{ t.priority }} {% if t.status == 'completed' %}is-done{% endif %} mb-2">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+      <div class="d-flex gap-2 align-items-start">
+        {% if select %}<input class="form-check-input mt-1" type="checkbox" name="task" value="{{ t.pk }}" form="carry-form" aria-label="Select {{ t.number }}" {% if t.is_closed %}disabled{% endif %}>{% endif %}
+        <div>
+          <div class="small text-muted">{% if t.scheduled_start %}<strong>{{ t.scheduled_start|time:"H:i" }}{% if t.scheduled_end %}–{{ t.scheduled_end|time:"H:i" }}{% endif %}</strong> · {% endif %}{{ t.number }} · {{ t.category }}{% if t.estimated_minutes %} · est. {{ t.estimated_minutes|minutes }}{% endif %}{% if show_date %} · planned {{ t.planned_date|date:"D d M" }}{% endif %}</div>
+          <a href="{{ t.get_absolute_url }}" class="item-title fw-semibold text-decoration-none">{{ t.title }}</a>
+          {% if t.is_unplanned %}<span class="badge text-bg-warning"><i class="bi bi-lightning-fill"></i> Unplanned</span>{% endif %}
+          {% if t.recurrence_id %}<i class="bi bi-arrow-repeat text-muted" title="Recurring"></i>{% endif %}
+          {% if t.delay_reason and not t.is_closed %}<div class="small text-warning-emphasis"><i class="bi bi-info-circle"></i> {{ t.delay_reason|truncatechars:120 }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="d-flex gap-1 align-items-center no-print">
+        {{ t|status_badge }}
+        {% if is_own and not t.is_closed %}
+          {% if running_timer and running_timer.task_id == t.pk %}
+            <form method="post" action="{% url 'tasks:timer_stop' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-danger" title="Stop timer"><i class="bi bi-stop-fill"></i></button></form>
+          {% else %}
+            <form method="post" action="{% url 'tasks:timer_start' t.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="btn btn-sm btn-outline-primary" title="Start work"><i class="bi bi-play-fill"></i></button></form>
+          {% endif %}
+          <a class="btn btn-sm btn-outline-success" href="{% url 'tasks:complete' t.pk %}?next={{ request.get_full_path|urlencode }}" title="Complete"><i class="bi bi-check-lg"></i></a>
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'tasks:reschedule' t.pk %}?next={{ request.get_full_path|urlencode }}" title="Reschedule"><i class="bi bi-calendar-event"></i></a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>

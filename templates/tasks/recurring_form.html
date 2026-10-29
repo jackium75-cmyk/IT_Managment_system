@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load task_tags %}
+{% block title %}{% if obj %}Edit schedule{% else %}New recurring task{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'tasks:recurring_list' %}">Recurring tasks</a></li></ol></nav>
+  <h1>{% if obj %}{{ obj.title }}{% else %}New recurring task{% endif %}</h1>
+  {% if obj %}<p class="text-muted mb-0">{{ obj.describe }}</p>{% endif %}
+</div>
+<div class="row g-3">
+<div class="col-xl-8">
+<form method="post" novalidate class="card">{% csrf_token %}
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+    <div class="row">
+      {% for field in form %}
+        {% if field.name == "frequency" %}</div><h2 class="h6 text-uppercase text-muted mt-2">Schedule</h2><div class="row">{% endif %}
+        {% if field.name == "description" %}</div><h2 class="h6 text-uppercase text-muted mt-2">Details</h2><div class="row">{% endif %}
+        <div class="{% if field.name in 'title description expected_outcome weekdays is_active' %}col-12{% elif field.name in 'frequency interval day_of_month start_date end_date scheduled_start scheduled_end estimated_minutes' %}col-6 col-md-4{% else %}col-md-6{% endif %}">
+          {% include "includes/field.html" with inline_choices=True %}</div>
+      {% endfor %}
+    </div>
+    {% if obj %}<p class="small text-muted mb-0">Saving replaces future tasks from this schedule that nobody has touched yet. Tasks already started, commented on or rescheduled are never changed.</p>{% endif %}
+  </div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn btn-primary" type="submit">Save schedule</button>
+    <a class="btn btn-outline-secondary" href="{% url 'tasks:recurring_list' %}">Cancel</a></div>
+</form>
+</div>
+{% if obj %}
+<div class="col-xl-4"><div class="card"><div class="card-header bg-white">Next occurrences</div><ul class="list-group list-group-flush">
+  {% for t in upcoming %}<li class="list-group-item small d-flex justify-content-between"><a href="{{ t.get_absolute_url }}">{{ t.planned_date|date:"D d M Y" }}</a>{{ t|status_badge }}</li>
+  {% empty %}<li class="list-group-item small text-muted">None scheduled.</li>{% endfor %}
+</ul></div></div>
+{% endif %}
+</div>
+{% endblock %}

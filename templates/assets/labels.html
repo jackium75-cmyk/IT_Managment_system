@@ -1,0 +1,24 @@
+{% load static %}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Asset labels</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 10mm; }
+  .sheet { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+  .label { border: 1px dashed #999; padding: 3mm; display: flex; gap: 3mm; align-items: center; break-inside: avoid; }
+  .label img { width: 28mm; height: 28mm; }
+  .tag { font-size: 14pt; font-weight: 700; }
+  .meta { font-size: 8pt; color: #333; }
+  .noprint { margin-bottom: 6mm; }
+  @media print { .noprint { display: none; } body { margin: 6mm; } }
+</style></head>
+<body>
+  <div class="noprint"><button type="button" data-print>Print</button> {{ labels|length }} label(s). Cut along the dashed lines and stick on the equipment.</div>
+  <div class="sheet">
+    {% for asset, png in labels %}
+    <div class="label"><img src="data:image/png;base64,{{ png }}" alt="QR {{ asset.tag }}">
+      <div><div class="tag">{{ asset.tag }}</div><div class="meta">{{ asset.name|truncatechars:40 }}</div>
+        <div class="meta">{{ site_settings.hotel_name }} IT{% if site_settings.it_department_phone %} · {{ site_settings.it_department_phone }}{% endif %}</div>
+        <div class="meta">Scan to report a problem</div></div></div>
+    {% endfor %}
+  </div>
+<script src="{% static 'js/app.js' %}"></script>
+</body></html>

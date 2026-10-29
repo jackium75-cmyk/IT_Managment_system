@@ -1,0 +1,4 @@
+{% extends "tasks/_action_base.html" %}
+{% block title %}Change status{% endblock %}
+{% block heading %}Change status{% endblock %}
+{% block intro %}<p class="small text-muted">Current status: <strong>{{ task.get_status_display }}</strong>. To complete the task, use <a href="{% url 'tasks:complete' task.pk %}">Complete</a>.</p>{% endblock %}

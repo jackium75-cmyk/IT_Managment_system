@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Knowledge base{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <div><h1>Knowledge base</h1><p class="small text-muted mb-0">Documented problems and solutions. Matching articles are suggested automatically on new tickets.</p></div>
+  <a href="{% url 'knowledge:create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>New article</a>
+</div>
+<form method="get" class="card card-body mb-3 no-print"><div class="row g-2 align-items-end">
+  <div class="col-12 col-md-4"><label class="form-label small" for="f-q">Search</label><input type="search" id="f-q" name="q" value="{{ f.q }}" class="form-control" placeholder="Symptoms, error code, device…"></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-cat">Category</label><select id="f-cat" name="category" class="form-select"><option value="">Any</option>{% for c in categories %}<option value="{{ c.pk }}" {% if f.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-dev">Device type</label><select id="f-dev" name="device" class="form-select"><option value="">Any</option>{% for d in devices %}<option value="{{ d.pk }}" {% if f.device == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-ver">Verified</label><select id="f-ver" name="verified" class="form-select"><option value="">Any</option><option value="1" {% if f.verified == "1" %}selected{% endif %}>Verified</option><option value="0" {% if f.verified == "0" %}selected{% endif %}>Unverified</option></select></div>
+  <div class="col-6 col-md-2"><label class="form-label small" for="f-st">Status</label><select id="f-st" name="status" class="form-select">{% for v, l in statuses %}<option value="{{ v }}" {% if status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="col-12 col-md-2 ms-auto"><button class="btn btn-outline-primary w-100">Search</button></div>
+</div></form>
+<div class="card"><ul class="list-group list-group-flush">
+  {% for a in page_obj %}<li class="list-group-item">
+    <a href="{{ a.get_absolute_url }}" class="fw-semibold">{{ a.title }}</a>
+    {% if a.is_verified %}<span class="badge text-bg-success">verified</span>{% else %}<span class="badge text-bg-light border">unverified</span>{% endif %}
+    {% if a.status != "published" %}<span class="badge text-bg-secondary">{{ a.get_status_display }}</span>{% endif %}
+    <div class="small text-muted">{{ a.category.name|default:"" }}{% if a.asset_category %} · {{ a.asset_category.name }}{% endif %}{% if a.error_codes %} · codes: {{ a.error_code_list|join:", " }}{% endif %} · updated {{ a.updated_at|date:"d M Y" }}</div>
+    <div class="small">{{ a.solution|truncatechars:180 }}</div>
+  </li>{% empty %}<li class="list-group-item text-muted text-center py-4">No articles found. Write one from a resolved ticket with “Write up the solution”.</li>{% endfor %}
+</ul></div>
+{% include "includes/pagination.html" %}
+{% endblock %}

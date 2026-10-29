@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}My profile{% endblock %}
+{% block content %}
+<div class="page-header mb-3"><h1>My profile</h1></div>
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <dl class="row mb-0">
+        <dt class="col-sm-4">Name</dt><dd class="col-sm-8">{{ user.get_full_name|default:"—" }}</dd>
+        <dt class="col-sm-4">Username</dt><dd class="col-sm-8">{{ user.username }}</dd>
+        <dt class="col-sm-4">Email</dt><dd class="col-sm-8">{{ user.email|default:"—" }}</dd>
+        <dt class="col-sm-4">Role</dt><dd class="col-sm-8">{{ profile.get_role_display }}</dd>
+        <dt class="col-sm-4">Department</dt><dd class="col-sm-8">{{ profile.department|default:"—" }}</dd>
+        <dt class="col-sm-4">Job title</dt><dd class="col-sm-8">{{ profile.job_title|default:"—" }}</dd>
+      </dl>
+      <p class="text-muted small mt-3 mb-0">Name, email, role and department are managed by the system administrator.</p>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100"><div class="card-body">
+      <h2 class="h6">Contact details</h2>
+      <form method="post" novalidate>{% csrf_token %}
+        {% include "includes/form_body.html" %}
+        <button class="btn btn-primary" type="submit">Save</button>
+      </form>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <h1>Users</h1>
+  <a href="{% url 'accounts:user_create' %}" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>New user</a>
+</div>
+<form method="get" class="card card-body mb-3 no-print">
+  <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-4"><label class="form-label small" for="f-q">Search</label>
+      <input type="search" name="q" id="f-q" value="{{ q }}" class="form-control" placeholder="Name, username, email, job title"></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-role">Role</label>
+      <select name="role" id="f-role" class="form-select"><option value="">All roles</option>
+        {% for value, label in roles %}<option value="{{ value }}" {% if role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select></div>
+    <div class="col-6 col-md-2"><label class="form-label small" for="f-dept">Department</label>
+      <select name="department" id="f-dept" class="form-select"><option value="">All</option>
+        {% for d in departments %}<option value="{{ d.pk }}" {% if department == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}{% if not d.is_active %} (inactive){% endif %}</option>{% endfor %}
+      </select></div>
+    {% include "includes/status_filter.html" %}
+    <div class="col-12 col-md-2 d-flex gap-2"><button class="btn btn-outline-primary flex-fill" type="submit">Filter</button>
+      <a class="btn btn-outline-secondary" href="{% url 'accounts:user_list' %}">Reset</a></div>
+  </div>
+</form>
+<div class="card"><div class="table-responsive">
+  <table class="table table-hover align-middle mb-0">
+    <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Department</th><th>Last sign-in</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for u in page_obj %}
+      <tr>
+        <td><a href="{% url 'accounts:user_detail' u.pk %}">{{ u.get_full_name|default:u.username }}</a><div class="small text-muted">{{ u.profile.job_title }}</div></td>
+        <td>{{ u.username }}</td>
+        <td>{{ u.profile.get_role_display }}</td>
+        <td>{{ u.profile.department|default:"—" }}</td>
+        <td>{{ u.last_login|date:"d M Y H:i"|default:"Never" }}</td>
+        <td>{% if u.is_active %}<span class="badge text-bg-success">Active</span>{% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-4">No users match these filters.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% include "includes/pagination.html" %}
+{% endblock %}

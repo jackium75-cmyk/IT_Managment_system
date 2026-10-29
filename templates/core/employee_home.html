@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load helpdesk_tags %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<div class="page-header mb-3"><h1>Welcome, {{ user.first_name|default:user.username }}</h1></div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3"><div class="card-body text-center py-4">
+      <h2 class="h5"><i class="bi bi-life-preserver me-2 text-primary"></i>Something not working, or need IT help?</h2>
+      <p class="text-muted">Describe it in your own words and add a photo or video from your phone.</p>
+      <a href="{% url 'helpdesk:create' %}" class="btn btn-primary report-btn"><i class="bi bi-plus-lg"></i> Report a problem</a>
+      {% if site_settings.it_department_phone %}<p class="small text-muted mt-3 mb-0">Urgent? Call IT on <strong>{{ site_settings.it_department_phone }}</strong>.</p>{% endif %}
+    </div></div>
+    <div class="card"><div class="card-header bg-white d-flex justify-content-between"><span>My recent requests</span><a href="{% url 'helpdesk:list' %}" class="small">See all</a></div>
+      <ul class="list-group list-group-flush">
+        {% for t in recent %}<li class="list-group-item d-flex justify-content-between gap-2"><span><a href="{{ t.get_absolute_url }}">{{ t.reference }}</a> {{ t.subject }}<span class="d-block small text-muted">{{ t.created_at|date:"d M Y H:i" }}</span></span><span>{{ t|ticket_status }}</span></li>
+        {% empty %}<li class="list-group-item text-muted small">You have not reported anything yet.</li>{% endfor %}
+      </ul></div>
+  </div>
+  <div class="col-lg-5">
+    {% if needs_action %}<div class="card border-warning mb-3"><div class="card-header bg-warning-subtle">Waiting for you</div><ul class="list-group list-group-flush">
+      {% for t in needs_action %}<li class="list-group-item small"><a href="{{ t.get_absolute_url }}">{{ t.reference }}</a> {{ t.subject }} — {% if t.status == "resolved" %}please confirm it is fixed{% else %}IT asked a question{% endif %}</li>{% endfor %}
+    </ul></div>{% endif %}
+    <div class="card"><div class="card-body">
+      <h2 class="h6">Your account</h2>
+      <dl class="row mb-0 small">
+        <dt class="col-5">Department</dt><dd class="col-7">{{ profile.department|default:"—" }}</dd>
+        <dt class="col-5">Location</dt><dd class="col-7">{{ profile.location|default:"—" }}</dd>
+        <dt class="col-5">Phone</dt><dd class="col-7">{{ profile.phone|default:"—" }}</dd>
+      </dl>
+      <a href="{% url 'accounts:profile' %}" class="btn btn-sm btn-outline-primary mt-2">Update contact details</a>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

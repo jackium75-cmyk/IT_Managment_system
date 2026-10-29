@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load asset_tags %}
+{% block title %}Maintenance compliance{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-end gap-2 mb-2">
+  <div><h1>Maintenance compliance &amp; equipment failures</h1><p class="text-muted mb-0">{{ start|date:"d M Y" }} – {{ end|date:"d M Y" }}</p></div>
+  <button class="btn btn-outline-secondary btn-sm no-print" type="button" data-print><i class="bi bi-printer"></i> Print</button>
+</div>
+{% include "maintenance/_nav.html" with active="compliance" %}
+<form method="get" class="card card-body mb-3 no-print"><div class="row g-2 align-items-end">
+  <div class="col-6 col-md-3"><label class="form-label small" for="f-start">From</label><input type="date" id="f-start" name="start" value="{{ start|date:'Y-m-d' }}" class="form-control"></div>
+  <div class="col-6 col-md-3"><label class="form-label small" for="f-end">To</label><input type="date" id="f-end" name="end" value="{{ end|date:'Y-m-d' }}" class="form-control"></div>
+  <div class="col-12 col-md-2"><button class="btn btn-outline-primary w-100">Apply</button></div>
+</div></form>
+<div class="row g-3 mb-3">
+  {% with r=result %}
+  <div class="col-6 col-md-2"><div class="card metric-card h-100"><div class="card-body"><div class="metric-value">{{ r.due }}</div><div class="small text-muted">Visits due</div></div></div></div>
+  <div class="col-6 col-md-2"><div class="card metric-card h-100"><div class="card-body"><div class="metric-value text-success">{{ r.on_time }}</div><div class="small text-muted">On time</div></div></div></div>
+  <div class="col-6 col-md-2"><div class="card metric-card h-100"><div class="card-body"><div class="metric-value text-warning">{{ r.late }}</div><div class="small text-muted">Late</div></div></div></div>
+  <div class="col-6 col-md-2"><div class="card metric-card h-100"><div class="card-body"><div class="metric-value text-danger">{{ r.missed }}</div><div class="small text-muted">Missed</div></div></div></div>
+  <div class="col-6 col-md-2"><div class="card metric-card h-100"><div class="card-body"><div class="metric-value">{{ r.open }}</div><div class="small text-muted">Still open ({{ r.overdue }} overdue)</div></div></div></div>
+  <div class="col-6 col-md-2"><div class="card metric-card h-100"><div class="card-body"><div class="metric-value text-primary">{% if r.rate is not None %}{{ r.rate }}%{% else %}—{% endif %}</div><div class="small text-muted">Compliance</div></div></div></div>
+  {% endwith %}
+</div>
+<p class="small text-muted">Definitions: a visit is counted in the period of its <strong>original</strong> due date. <em>On time</em> = completed on or before that date (rescheduling does not hide lateness). Compliance = on time ÷ (completed + missed); open visits are not counted yet. {{ result.rescheduled }} visit(s) were rescheduled.</p>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header bg-white">By asset category</div><div class="table-responsive"><table class="table table-sm mb-0">
+    <thead><tr><th>Category</th><th class="text-end">Due</th><th class="text-end">On time</th><th class="text-end">Late</th><th class="text-end">Missed</th><th class="text-end">Open</th></tr></thead>
+    <tbody>{% for name, row in by_category %}<tr><td>{{ name }}</td><td class="text-end">{{ row.due }}</td><td class="text-end">{{ row.on_time }}</td><td class="text-end">{{ row.late }}</td><td class="text-end">{{ row.missed }}</td><td class="text-end">{{ row.open }}</td></tr>
+    {% empty %}<tr><td colspan="6" class="text-muted text-center">No preventive maintenance due in this period.</td></tr>{% endfor %}</tbody></table></div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header bg-white">Equipment with the most failures</div><div class="table-responsive"><table class="table table-sm mb-0">
+    <thead><tr><th>Asset</th><th class="text-end">Incidents</th><th class="text-end">Repairs</th></tr></thead>
+    <tbody>{% for a in failures %}<tr><td><a href="{{ a.get_absolute_url }}">{{ a.tag }}</a> {{ a.name }} <span class="small text-muted">{{ a.category }}</span></td><td class="text-end">{{ a.incidents }}</td><td class="text-end">{{ a.repairs }}</td></tr>
+    {% empty %}<tr><td colspan="3" class="text-muted text-center">No incidents or repairs linked to assets in this period.</td></tr>{% endfor %}</tbody></table></div>
+    <div class="card-footer bg-white small">Repair and maintenance spend: {% for c in costs %}<strong>{{ c.total }} {{ c.currency }}</strong>{% if not forloop.last %}, {% endif %}{% empty %}none recorded{% endfor %}. Only recorded costs are shown; currencies are never mixed.</div></div></div>
+</div>
+{% endblock %}

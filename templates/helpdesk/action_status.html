@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Update ticket{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'helpdesk:list' %}">Helpdesk</a></li><li class="breadcrumb-item"><a href="{{ ticket.get_absolute_url }}">{{ ticket.reference }}</a></li></ol></nav>
+  <h1>Update status</h1><p class="text-muted mb-0">{{ ticket.reference }} · {{ ticket.subject }} · currently <strong>{{ ticket.get_status_display }}</strong></p>
+</div>
+<form method="post" novalidate class="card ticket-status-form" style="max-width: 720px;">{% csrf_token %}
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+    {% include "includes/field.html" with field=form.status %}
+    <div data-show-for="waiting">{% include "includes/field.html" with field=form.waiting_on %}
+      <p class="small text-muted">The resolution clock pauses while the ticket is waiting. If you are waiting on the requester, your note is sent to them as a question.</p></div>
+    <div data-show-for="acknowledged in_progress waiting closed new">{% include "includes/field.html" with field=form.note %}</div>
+    <div data-show-for="resolved">
+      {% include "includes/field.html" with field=form.resolution_details %}
+      {% include "includes/field.html" with field=form.root_cause %}
+      {% include "includes/field.html" with field=form.verification %}
+      <p class="small text-muted">The requester is asked to confirm the fix. Unconfirmed tickets close automatically after {{ site_settings.ticket_auto_close_days }} days. Attach an “after the fix” photo in the conversation if useful.</p>
+    </div>
+  </div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn btn-primary" type="submit">Update</button><a class="btn btn-outline-secondary" href="{{ ticket.get_absolute_url }}">Cancel</a></div>
+</form>
+{% endblock %}

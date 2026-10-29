@@ -1,0 +1,302 @@
+# Feature status
+
+## ✅ Completed — Phase 1 (foundation)
+
+- [x] Django 5.2 LTS project with modular apps (`core`, `accounts`, `dashboard`), configured through environment variables and `.env`.
+- [x] SQLite for development and PostgreSQL for production, switched with `DB_ENGINE`.
+- [x] Four roles: System Administrator, IT Support Officer, Department Head/Manager and Hotel Employee. Superusers count as administrators.
+- [x] Permissions enforced in views, with denied attempts audited.
+- [x] Sign-in and sign-out:
+  - sign-out is POST-only and CSRF-protected;
+  - a username/IP lockout stops brute-force attempts;
+  - users with a temporary password must change it.
+- [x] User administration:
+  - list with search, role/department/status filters and pagination;
+  - create, edit, deactivate/reactivate and reset password;
+  - per-user history;
+  - an administrator cannot deactivate or demote their own account.
+- [x] Departments (with a head/manager) and locations: create, edit and deactivate. Names are unique regardless of case, and records are never deleted.
+- [x] System configuration: hotel name, timezone, IT contact details, upload limits and allowed types (dangerous types blocked), lockout policy and email toggle. Every change is audited.
+- [x] Append-only audit log covering:
+  - sign-ins, failed sign-ins, lockouts and denied access;
+  - account and configuration changes.
+  
+  It has filters (search, event type, date range), pagination and field-level change details.
+- [x] Dashboard framework:
+  - date and department filters;
+  - cards that link to filtered lists;
+  - Chart.js charts calculated from live records;
+  - managers restricted to their own department.
+- [x] Responsive sidebar layout that works on desktop, tablet and phone. It has keyboard skip-link, labelled form fields, entered values kept when validation fails, and print styles.
+- [x] Static assets vendored so the system works with no internet. Waitress and WhiteNoise handle Windows production serving.
+- [x] Rotating log files, plus custom 403, 404 and 500 pages.
+- [x] Demo-data command (`seed_demo`), clearly labelled and blocked when DEBUG is off.
+- [x] 32 automated tests (Phase 1).
+
+## ✅ Completed — Phase 2 (tasks, planner, time, diary)
+
+- [x] Tasks:
+  - automatic `TSK-YYYY-NNNNN` numbers;
+  - every field in the specification apart from evidence and ticket/asset/project links (Phases 3–5);
+  - all 8 statuses.
+- [x] Administrator-managed task categories, each mapped to an activity type for time analysis. Defaults are supplied.
+- [x] Status rules:
+  - a reason is required for waiting, blocked, cancelled and reopening;
+  - completion notes are required to complete a task;
+  - every change is recorded on the task timeline, in the diary and in the audit log.
+- [x] Rescheduling with a reason:
+  - the original planned date is never lost;
+  - schedule history is kept;
+  - unfinished tasks can be carried over in bulk from the planner.
+- [x] Views:
+  - task list with *My open / Today / Overdue / Unplanned / All* tabs, filters, sorting and pagination;
+  - task detail with an activity timeline;
+  - daily planner (scheduled, any time, overdue carried in, "planned but moved");
+  - weekly calendar, for one officer or all IT staff.
+- [x] Recurring tasks:
+  - daily, weekly (chosen weekdays, every N weeks), monthly (day of month, clamped to the month's length) and every-N-days, with optional weekend skip;
+  - generated 14 days ahead, without ever creating the same task twice;
+  - editing a schedule only replaces future tasks nobody has touched;
+  - a management command runs it from Task Scheduler.
+- [x] Time tracking:
+  - start/stop timer, with the running timer shown on every page;
+  - only one running timer per person, enforced by the database;
+  - time entered after the fact;
+  - overlapping time for the same person is rejected;
+  - entries are voided rather than deleted.
+- [x] Unplanned / emergency work, with three ways to record it: start the timer now, record finished work, or just log it.
+  - it is linked to the task it interrupted;
+  - the interrupted task's history is untouched.
+- [x] Activity diary:
+  - automatic (system) and manual entries, clearly labelled;
+  - search, plus filters for date, activity type, source, department and task;
+  - day grouping with planned-vs-completed counts and recorded time;
+  - edits are audited, and entries are voided rather than deleted;
+  - print view.
+- [x] A single time-counting rule (`apps/diary/timecalc.py`) used by the diary, planner and dashboard. Database constraints stop system diary entries from carrying time.
+- [x] Dashboard additions:
+  - cards: today's work, tasks in the selected period (completion rate, completed late, rescheduled, waiting on others), time recorded;
+  - charts: tasks completed per day, planned vs unplanned hours, hours by activity type;
+  - category, priority, status and IT-officer filters.
+- [x] Demo data for Phase 2.
+- [x] 72 automated tests in total (40 new).
+
+## ✅ Completed — Phase 3 (helpdesk, evidence, notifications)
+
+- [x] **Tickets:** incidents and service requests, numbered `INC-`/`REQ-YYYY-NNNNN`, with every field from the specification except the asset link, which comes in Phase 4. The affected device is free text until then.
+- [x] **Simple employee portal:**
+  - a plain-language form;
+  - a category → subcategory picker;
+  - priority calculated from impact × urgency;
+  - a "My requests" home page with a "waiting for you" list.
+- [x] **IT can log tickets on behalf of a caller.**
+- [x] **Lifecycle:**
+  - New → Acknowledged → In Progress → Waiting (on requester / vendor / parts / approval) → Resolved → Closed;
+  - status history is kept, including reopenings;
+  - invalid moves are refused.
+- [x] **Requester confirmation:**
+  - confirm with an optional 1–5 rating and comment;
+  - reopen within a configurable window;
+  - auto-close of unconfirmed tickets.
+- [x] **Ticket timeline:**
+  - public replies, internal notes and troubleshooting steps;
+  - status changes and time entries;
+  - evidence shown where it was added;
+  - resolution, root cause and verification.
+- [x] **Evidence:**
+  - multiple photos, videos and documents per upload, from phones or computers;
+  - files listed before upload, with problems flagged, and an upload progress bar;
+  - IT-only evidence;
+  - stage tags (reported / troubleshooting / after the fix);
+  - task attachments.
+- [x] **Upload security:**
+  - type allow-list, with script and executable types permanently blocked;
+  - content checks (magic bytes, image check by Pillow, real Office files without macros, text that isn't binary);
+  - size and count limits;
+  - random storage names outside the web root;
+  - permission-checked downloads;
+  - `nosniff` and CSP headers;
+  - HTTP Range support so videos can be played and skipped through on iPhone;
+  - SHA-256 fingerprint for each file.
+- [x] **Assignment:** assign to me or to a colleague. The "Start work" timer also acknowledges the ticket and assigns it.
+- [x] **Ticket time:** timer and time recorded after the fact. One running timer per person across tasks and tickets.
+- [x] **Task ↔ ticket links:** create a task from a ticket, or link an existing task. Time is counted against the ticket, and linking moves existing time with no double counting.
+- [x] **Response and resolution targets** per priority, editable by administrators. Time waiting on others pauses the resolution target.
+- [x] **Escalation rules**, editable by administrators:
+  - triggers: unassigned for N minutes, response missed, N% of resolution time used, resolution missed;
+  - notify the assignee, IT staff, administrators or the department head;
+  - each rule fires once per ticket;
+  - ships with 5 default rules.
+- [x] **Notification centre:**
+  - unread badge, mark read, mark all read;
+  - optional email, sent only after the action is saved, with a per-user opt-out;
+  - duplicate suppression;
+  - daily overdue-task and due-today reminders.
+- [x] **Dashboard additions:**
+  - cards: new requests, open incidents, critical/high, past target, resolved today, awaiting feedback;
+  - period figures: average and median resolution time (waiting excluded), response and resolution targets met, satisfaction;
+  - charts: received vs resolved, tickets by department, incidents by category × priority;
+  - managers see their own department only.
+- [x] **Administration:** ticket categories, service targets and escalation rules, plus helpdesk settings in System Configuration.
+- [x] **Fixed a bug in the shared form helper:** it validated forms before they finished setting up. A regression test now covers it.
+- [x] 108 automated tests in total (36 new).
+
+## ✅ Completed — Phase 4 (assets and maintenance)
+
+- [x] **Asset register:**
+  - every field in the specification;
+  - category-based IDs (`PRN-0001`);
+  - suppliers;
+  - status and condition;
+  - network details (hostname, IP, MAC, operating system);
+  - software and licence notes;
+  - replacement recommendation;
+  - documents and photos.
+- [x] **Credential guard:** text that looks like a password, Wi-Fi key or licence key is refused anywhere in the register.
+- [x] **Assignment and location history.** Retire, dispose or report lost needs a reason, and stops maintenance. Assets are never deleted.
+- [x] **Search and filters** (category, status, department, location, condition, warranty, needs attention) with sorting and pagination.
+- [x] **Export** to **Excel and CSV**, audited and protected against formula injection.
+- [x] **QR codes:**
+  - an unguessable token per asset;
+  - a PNG for each asset and printable label sheets;
+  - a scan route that requires sign-in;
+  - IT staff land on the record; everyone else gets "report a problem with this device".
+- [x] **Service history** combining incident and request tickets, repairs, maintenance, moves and status changes, with spend per currency.
+- [x] **Tickets and tasks can reference an asset.** Diary entries carry the asset, so the diary can be filtered by asset and ticket.
+- [x] **"Needs attention" rules:** under repair, poor condition, replacement recommended, warranty ending, past expected life, repeated failures, overdue maintenance.
+- [x] **Maintenance plans:**
+  - repeat every N days, weeks or months;
+  - checklist, responsible technician, lead time;
+  - one open visit at a time.
+- [x] **Visit tasks and reminders:** a planner task and reminder are created automatically within the lead time, and there is an overdue reminder.
+- [x] **Missed visits:** marked missed after a configurable grace period, and the next visit keeps the plan's rhythm.
+- [x] **Completing a visit:**
+  - checklist with OK / Issue / N/A (issues need a note);
+  - inspection results, problems found, parts used, cost, recommendations;
+  - asset condition afterwards;
+  - before/after evidence.
+  - Completing it also completes the visit's planner task.
+- [x] **Corrective repairs** recorded from an asset or a ticket, with optional asset status and condition updates.
+- [x] **Rescheduling** with a reason keeps the original due date.
+- [x] **Maintenance pages:**
+  - views: upcoming, overdue, completed, missed, repairs;
+  - monthly calendar;
+  - compliance report by category, with the assets that fail most and repair spend.
+- [x] **Dashboard additions:**
+  - cards: maintenance due in 14 days, overdue, assets needing attention, under repair, warranties ending, assets in service;
+  - charts: repeated equipment failures, maintenance compliance.
+- [x] **One `run_jobs` command** for all scheduled work. `run_helpdesk_jobs` remains as an alias.
+- [x] **Administration:** asset categories (code, maintenance interval, expected life), hotel currency and maintenance grace period.
+- [x] 127 automated tests in total (19 new).
+
+## ✅ Completed — Phase 5 (projects, procurement, knowledge base)
+
+- [x] **Projects:**
+  - all the specification's fields: objective, dates, status, priority, owner, sponsor department, estimated and other costs, risks, blockers, deliverables, final outcome, benefits;
+  - documented savings only with evidence, and optional confirmation of the benefits by a manager.
+- [x] **Milestones** with a progress percentage. A progress log is kept in order and also appears in the activity diary. Project documents can be attached.
+- [x] **Linked work:** tasks, tickets, maintenance visits and purchase requests can be linked to a project. Time uses the once-only rule; costs are kept per currency.
+- [x] **Printable project report** stating what was implemented, the benefits (with verification status), milestones, work, time and costs.
+- [x] **Procurement requests:**
+  - purchase, external repair, software or service;
+  - linked to an asset, ticket, project and supplier;
+  - quotations, invoices and delivery notes attached.
+- [x] **Approval workflow** (`Approval` model):
+  - department head or administrator; never the requester;
+  - automatic approval below a threshold;
+  - rejection with a reason, then resubmission, with every decision kept;
+  - amounts locked after submission;
+  - notifications to approvers and the requester.
+- [x] **Order and delivery:** actual expenditure, variance against the approved amount, warranty, outcome, and documented cost-saving notes. Delivered spend feeds the asset's service history and the project's costs.
+- [x] **Knowledge base:**
+  - the full troubleshooting structure;
+  - verified or unverified;
+  - draft, published and archived;
+  - written up from a resolved ticket (troubleshooting steps included);
+  - links to related assets and tickets;
+  - the credential guard.
+- [x] **Explainable solution suggestions** on tickets: error codes, device type, category, keywords, with reasons and a caution. *I'm using this solution* records the link on the ticket.
+- [x] **Global search**, role-aware.
+- [x] **Dashboard additions:** active projects, projects past their target date, projects completed in the period, requests waiting for my approval, open requests, IT expenditure recorded in the period.
+- [x] **Diary filter** by project. Diary entries carry the project.
+- [x] 148 automated tests in total (21 new).
+
+## ✅ Completed — Phase 6 (reports and analytics)
+
+- [x] **Reports centre** (`/reports/`) for administrators, IT staff and managers:
+  - **Daily:** planned vs completed, incomplete tasks with reasons, unplanned work, tickets handled and resolved, maintenance done, time by activity, next actions.
+  - **Weekly:** planned vs completed by day, requests received vs resolved (chart), major incidents, outstanding/overdue tickets, maintenance and repairs, repeated problems, projects progressed, risks, next week's priorities.
+  - **Monthly:** performance summary, resolution time by priority (average, median, 90th percentile), service-target performance, requests by department and category, significant incidents, repeated problems, maintenance compliance (overall and by equipment category), equipment repaired, time, projects delivered and progressed, expenditure, documented savings, risks, recommendations.
+  - **Annual:** monthly trends, major incidents, projects delivered, improvements, equipment lifecycle (age, end of life, replaced/retired), recurring challenges, spend.
+  - **Custom:** any period with filters for department, task category, ticket category, priority, status, technician, asset, project and activity type.
+- [x] **Every figure is labelled** *Recorded*, *Reported by IT*, *Estimated* or *Verified* (confirmed by the requester or a manager). A definitions section explains each term.
+- [x] **Exports:** hotel-branded PDF (title, period, generation time, author, summary, tables, charts, "Page X of Y"), Excel (summary sheet, one sheet per table, definitions) and CSV. Print-friendly HTML view.
+- [x] **Data safety in exports:** spreadsheet formula injection is neutralised; downloads are `private, no-store`; each generation is written to the audit log.
+- [x] **Scope enforced on the server:** managers are always limited to their own department whatever the URL says, and never see per-person IT staff sections; employees are refused.
+- [x] **Workload analytics** (`/reports/analytics/`):
+  - planned work completed, tasks completed late, unplanned interruptions, total recorded time and where it goes (support, maintenance, projects, administration);
+  - tickets handled and resolved, average and median resolution (waiting excluded), resolution by priority;
+  - recurring incident rate (same asset, or same requester and category, within 30 days);
+  - backlog size and age, with what is waiting on others;
+  - preventive maintenance compliance, documented improvements;
+  - 12-week trend chart and plain-language notes on where workload is rising;
+  - per-person table listed alphabetically with priority mix, waiting time and unplanned share. It is not a ranking.
+- [x] Time in every report uses the once-only rule: time on a task linked to a ticket counts against the ticket.
+- [x] Reported savings appear only when evidenced. Nothing is estimated or invented.
+- [x] 166 automated tests in total (18 new).
+
+## ✅ Completed — Phase 7 (security, backups, deployment, documentation)
+
+- [x] **Security review** ([`docs/SECURITY.md`](SECURITY.md)): every requirement in the specification is mapped to how it is enforced and which tests prove it. Seven findings were fixed:
+  - **PostgreSQL row locking:** several workflow actions failed on PostgreSQL ("FOR UPDATE cannot be applied to the nullable side of an outer join"). Fixed, and the full test suite now also runs on PostgreSQL.
+  - **Django admin site:** business records are view-only there, and any change made there is copied into the audit log.
+  - **Content-Security-Policy:** a strict policy with no inline scripts. Inline handlers were moved to `app.js`, with a regression test.
+  - **Caching:** signed-in pages are sent with `private, no-store`, so *Back* after sign-out on shared PCs shows nothing. A Permissions-Policy is also sent.
+  - **HTTPS reverse proxy:** supported, with correct forwarded-IP handling (`-BehindProxy`), checked against Waitress.
+  - **Housekeeping:** expired sessions and old lockout counters are removed; the audit log is never pruned.
+  - **Benefit confirmation:** project benefits can be *verified* only by the sponsoring manager personally. Editing them withdraws the confirmation.
+- [x] **Automated security sweep:**
+  - every URL with GET and POST as an anonymous visitor;
+  - every staff URL as an employee;
+  - every administration URL as an IT officer and as a manager;
+  - security headers, template hygiene, and checks for secrets in settings.
+- [x] **Backups** (`apps/backups`):
+  - consistent snapshots (`pg_dump` against an exported snapshot, or the SQLite backup API) plus all uploads, in one zip;
+  - a SHA-256 manifest and row counts, and a whole-file fingerprint;
+  - a copy to a second location (`BACKUP_COPY_TO`), whose fingerprint is checked;
+  - rotation (daily + monthly + newest verified);
+  - one backup at a time; failures alert administrators.
+- [x] **Verification:** fingerprints, unsafe-path (zip-slip) rejection, and a test restore with a row-count comparison. SQLite restores into a temporary file; PostgreSQL restores into a scratch database.
+- [x] **Restore command:**
+  - verifies first;
+  - refuses backups from newer versions;
+  - asks for typed confirmation;
+  - makes a safety backup automatically;
+  - keeps the previous uploads folder;
+  - migrates, tidies the backup records and audits the restore.
+  - Tested on SQLite and PostgreSQL 16, including disaster recovery onto an empty server.
+- [x] **Administration → Backups** page: history, *Back up now*, *Verify*, disk space, second-copy status, restore instructions. No download of backups. A dashboard card for administrators turns red after 26 hours without a backup.
+- [x] **Windows scripts:**
+  - `install.ps1`: virtual environment, packages, `.env` with a generated secret, folder permissions, migrations, static files, preflight;
+  - `register_tasks.ps1`: server at boot with auto-restart, jobs every 10 minutes, nightly verified backup, optional `-BehindProxy`;
+  - `update.ps1`: backs up first and stops on failure;
+  - `start_server.ps1` updated.
+- [x] **`manage.py preflight`** production readiness check:
+  - debug mode, secret key, hosts, HTTPS;
+  - PostgreSQL, migrations, static files;
+  - folders, same-disk backups, `pg_dump`;
+  - backup age and verification;
+  - administrators, demo data, email;
+  - Django's deploy checks.
+- [x] **Documentation:** [user guide](USER_GUIDE.md), [deployment](DEPLOYMENT.md) (PostgreSQL, `.env`, scheduled tasks, firewall, HTTPS with Caddy or IIS, go-live checklist, updates, troubleshooting), [backup and restore](BACKUP_AND_RESTORE.md) (including the disaster-recovery procedure and a quarterly restore drill), [security review](SECURITY.md); README rewritten.
+- [x] 204 automated tests in total (38 new), passing on both SQLite and PostgreSQL 16 (one test is PostgreSQL-only).
+
+## Not included (deliberately)
+
+These are outside the specification's scope or need a decision or a third-party service from the hotel:
+
+- **SMS / WhatsApp notifications:** they need a paid, authorised provider. In-app and email notifications are included.
+- **Multi-factor authentication:** the system is LAN-only. If remote access is ever needed, put it behind the hotel's VPN or an identity-aware proxy with MFA (see SECURITY.md).
+- **Encryption of backup files by the application:** use BitLocker on the backup disks and restricted shares (see BACKUP_AND_RESTORE.md).
+- **Restoring from the web page:** deliberate. A restore replaces all data, so it is done on the server with the services stopped.
+- **Windows-only steps not executed here:** the PowerShell scripts use standard Windows cmdlets, but they were written and reviewed in a Linux build environment where PowerShell could not be run. Run them on a test server first (DEPLOYMENT.md), and report any error message.

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Procurement{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <div><h1>IT purchases &amp; repairs</h1>
+    <p class="small text-muted mb-0">Recorded IT expenditure since {{ year_start|date:"d M Y" }}: {% for cur, total in spend.items %}<strong>{{ total }} {{ cur }}</strong>{% if not forloop.last %}, {% endif %}{% empty %}none{% endfor %}. This is an expenditure log, not an accounting system.</p></div>
+  {% if it %}<a href="{% url 'procurement:create' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>New request</a>{% endif %}
+</div>
+<ul class="nav nav-pills mb-3 flex-wrap">
+  <li class="nav-item"><a class="nav-link {% if view == 'open' %}active{% endif %}" href="?view=open">Open</a></li>
+  <li class="nav-item"><a class="nav-link {% if view == 'approval' %}active{% endif %}" href="?view=approval">Waiting for my approval{% if pending_count %} <span class="badge text-bg-danger">{{ pending_count }}</span>{% endif %}</a></li>
+  <li class="nav-item"><a class="nav-link {% if view == 'delivered' %}active{% endif %}" href="?view=delivered">Delivered</a></li>
+  <li class="nav-item"><a class="nav-link {% if view == 'rejected' %}active{% endif %}" href="?view=rejected">Rejected</a></li>
+  <li class="nav-item"><a class="nav-link {% if view == 'all' %}active{% endif %}" href="?view=all">All</a></li>
+</ul>
+<form method="get" class="mb-3 no-print" style="max-width: 480px;"><input type="hidden" name="view" value="{{ view }}">
+  <div class="input-group"><input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Reference, item, reason" aria-label="Search"><button class="btn btn-outline-primary">Search</button></div></form>
+<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+  <thead><tr><th>Request</th><th>Type</th><th>Department</th><th class="text-end">Estimated</th><th class="text-end">Actual</th><th>Status</th></tr></thead>
+  <tbody>{% for r in page_obj %}
+    <tr><td><a href="{{ r.get_absolute_url }}">{{ r.reference }}</a> {{ r.item }}<div class="small text-muted">by {{ r.requested_by.get_full_name|default:r.requested_by.username }}{% if r.asset %} · {{ r.asset.tag }}{% endif %}</div></td>
+      <td class="small">{{ r.get_request_type_display }}</td><td class="small">{{ r.department|default:"—" }}</td>
+      <td class="text-end text-nowrap">{{ r.estimated_cost }} {{ r.currency }}</td>
+      <td class="text-end text-nowrap">{% if r.actual_expenditure is not None %}{{ r.actual_expenditure }} {{ r.currency }}{% else %}—{% endif %}</td>
+      <td><span class="badge {% if r.status == 'pending' %}text-bg-warning{% elif r.status == 'approved' or r.status == 'ordered' %}text-bg-primary{% elif r.status == 'delivered' %}text-bg-success{% elif r.status == 'rejected' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">{{ r.get_status_display }}</span></td></tr>
+  {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No requests here.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% include "includes/pagination.html" %}
+{% endblock %}

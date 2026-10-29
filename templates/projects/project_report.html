@@ -1,0 +1,27 @@
+{% load static %}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ project.code }} report</title><link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+<style>body{padding:2rem;max-width:900px;margin:auto}h1{font-size:1.5rem}h2{font-size:1.1rem;margin-top:1.5rem;border-bottom:1px solid #ddd;padding-bottom:.25rem}@media print{.noprint{display:none}body{padding:0}}</style></head>
+<body>
+<div class="noprint mb-3"><button class="btn btn-primary btn-sm" type="button" data-print>Print / save as PDF</button></div>
+<p class="text-muted mb-0">{{ site_settings.hotel_name }} · IT department · Project report</p>
+<h1>{{ project.code }} — {{ project.name }}</h1>
+<p class="small text-muted">Generated {% now "d M Y H:i" %} · Status: <strong>{{ project.get_status_display }}</strong> · Owner: {{ project.owner.get_full_name|default:project.owner.username }}{% if project.sponsor_department %} · For: {{ project.sponsor_department }}{% endif %}</p>
+<table class="table table-sm w-auto"><tr><th>Start</th><td>{{ project.start_date|date:"d M Y"|default:"—" }}</td><th>Target</th><td>{{ project.target_date|date:"d M Y"|default:"—" }}</td><th>Completed</th><td>{{ project.completed_on|date:"d M Y"|default:"—" }}</td></tr></table>
+<h2>Business objective</h2><p style="white-space: pre-line;">{{ project.business_objective }}</p>
+<h2>What was implemented</h2><p style="white-space: pre-line;">{{ project.deliverables|default:"Not yet recorded." }}</p>
+{% if project.final_outcome %}<h2>Final outcome</h2><p style="white-space: pre-line;">{{ project.final_outcome }}</p>{% endif %}
+<h2>Benefits to the hotel</h2>
+<p style="white-space: pre-line;">{{ project.benefits|default:"No benefits recorded yet." }}</p>
+<p class="small text-muted">{% if project.benefits_verified_by %}Benefits confirmed by {{ project.benefits_verified_by.get_full_name|default:project.benefits_verified_by.username }}.{% else %}Benefits as reported by IT; not independently verified.{% endif %}
+{% if project.documented_savings %} Documented savings: <strong>{{ project.documented_savings }} {{ project.currency }}</strong> — evidence: {{ project.savings_evidence }}{% else %} No cost savings are claimed.{% endif %}</p>
+<h2>Milestones</h2>
+<table class="table table-sm"><thead><tr><th>Milestone</th><th>Due</th><th>Completed</th></tr></thead><tbody>{% for m in milestones %}<tr><td>{{ m.title }}</td><td>{{ m.due_date|date:"d M Y"|default:"—" }}</td><td>{{ m.completed_on|date:"d M Y"|default:"not done" }}</td></tr>{% empty %}<tr><td colspan="3" class="text-muted">None recorded.</td></tr>{% endfor %}</tbody></table>
+<h2>Work and time</h2>
+<p>{{ work.tasks|length }} task(s), {{ work.tickets|length }} ticket(s), {{ work.maintenance|length }} maintenance record(s), {{ work.procurement|length }} purchase request(s). Time recorded: <strong>{{ time }}</strong> (each minute counted once).</p>
+<h2>Costs</h2>{% include "projects/_costs.html" %}
+<p class="small text-muted">Figures are recorded amounts per currency; they are not converted and are not audited accounts.</p>
+{% if project.risks or project.blockers %}<h2>Risks and blockers</h2>{% if project.risks %}<p style="white-space: pre-line;">{{ project.risks }}</p>{% endif %}{% if project.blockers %}<p style="white-space: pre-line;"><strong>Blockers:</strong> {{ project.blockers }}</p>{% endif %}{% endif %}
+{% if updates %}<h2>Recent progress updates</h2><ul class="small">{% for u in updates %}<li>{{ u.created_at|date:"d M Y" }} — {{ u.body }}</li>{% endfor %}</ul>{% endif %}
+<script src="{% static 'js/app.js' %}"></script>
+</body></html>

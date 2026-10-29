@@ -1,0 +1,10 @@
+{# Multi-file input with client-side checks and a progress bar (server re-validates everything). #}
+<div class="mb-3 evidence-upload">
+  <label class="form-label" for="{{ field.id_for_label }}"><i class="bi bi-paperclip"></i> {{ field.label }}</label>
+  {{ field }}
+  <div class="form-text">{{ field.help_text }}</div>
+  <ul class="list-unstyled small mt-2 mb-0 evidence-list" aria-live="polite"></ul>
+  {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+  <div class="progress mt-2 d-none" role="progressbar" aria-label="Upload progress" aria-valuemin="0" aria-valuemax="100">
+    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div></div>
+</div>

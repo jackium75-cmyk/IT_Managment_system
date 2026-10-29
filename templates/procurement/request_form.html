@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{% if req %}Edit {{ req.reference }}{% else %}New purchase / repair request{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'procurement:list' %}">Procurement</a></li>{% if req %}<li class="breadcrumb-item"><a href="{{ req.get_absolute_url }}">{{ req.reference }}</a></li>{% endif %}</ol></nav>
+  <h1>{% if req %}Edit {{ req.reference }}{% else %}New purchase / repair request{% endif %}</h1>
+  {% if tracking %}<p class="text-muted mb-0">After submission only tracking details can change. Cancel and raise a new request to change the item or amount.</p>{% endif %}
+</div>
+<form method="post" novalidate class="card" style="max-width: 860px;">{% csrf_token %}
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+    <div class="row">{% for field in form %}
+      <div class="{% if field.name == 'reason' or field.name == 'item' %}col-12{% elif field.name == 'quantity' or field.name == 'estimated_cost' or field.name == 'currency' %}col-md-4{% else %}col-md-6{% endif %}">{% include "includes/field.html" %}</div>
+    {% endfor %}</div>
+    {% if not req %}<p class="small text-muted mb-0">The request is saved as a draft. Attach the quotation, then submit it for approval.</p>{% endif %}
+  </div>
+  <div class="card-footer bg-white d-flex gap-2"><button class="btn btn-primary">Save</button><a class="btn btn-outline-secondary" href="{% if req %}{{ req.get_absolute_url }}{% else %}{% url 'procurement:list' %}{% endif %}">Cancel</a></div>
+</form>
+{% endblock %}

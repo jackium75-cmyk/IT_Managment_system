@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <div><h1>Reports centre</h1><p class="text-muted small mb-0">Every report is calculated from recorded data at the moment you generate it, and can be exported as PDF, Excel or CSV.</p></div>
+  <a href="{% url 'reports:analytics' %}" class="btn btn-outline-primary"><i class="bi bi-graph-up"></i> Workload analytics</a>
+</div>
+<div class="row g-3 mb-4">
+  {% for key, icon, title, text in kinds %}
+  <div class="col-md-6 col-xl"><a href="?kind={{ key }}" class="card metric-card h-100 text-decoration-none text-body">
+    <div class="card-body"><i class="bi bi-{{ icon }} fs-3 text-primary"></i><h2 class="h6 mt-2">{{ title }}</h2><p class="small text-muted mb-0">{{ text }}</p></div></a></div>
+  {% endfor %}
+</div>
+<form method="get" class="card" novalidate>
+  <div class="card-header bg-white">Choose period and filters</div>
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+    <div class="row">
+      <div class="col-md-4">{% include "includes/field.html" with field=form.kind %}</div>
+      <div class="col-6 col-md-4">{% include "includes/field.html" with field=form.start %}</div>
+      <div class="col-6 col-md-4">{% include "includes/field.html" with field=form.end %}</div>
+    </div>
+    <p class="small text-muted">Leave the dates empty for the current day / week / month / year. A daily report uses the “From” date.</p>
+    <details class="mb-3"><summary class="mb-2">Filters (mainly for custom reports)</summary>
+      <div class="row">
+        {% for field in form %}{% if field.name != "kind" and field.name != "start" and field.name != "end" and field.name != "notes" %}
+          <div class="col-md-4">{% include "includes/field.html" %}</div>{% endif %}{% endfor %}
+      </div>
+    </details>
+    {% include "includes/field.html" with field=form.notes %}
+  </div>
+  <div class="card-footer bg-white d-flex flex-wrap gap-2">
+    <button class="btn btn-primary" name="format" value="html"><i class="bi bi-eye"></i> View report</button>
+    <button class="btn btn-outline-secondary" name="format" value="pdf"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+    <button class="btn btn-outline-secondary" name="format" value="xlsx"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+    <button class="btn btn-outline-secondary" name="format" value="csv"><i class="bi bi-filetype-csv"></i> CSV</button>
+  </div>
+</form>
+{% endblock %}

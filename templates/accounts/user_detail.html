@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ obj.username }}{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap gap-2 justify-content-between align-items-end mb-3">
+  <div>
+    <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'accounts:user_list' %}">Users</a></li></ol></nav>
+    <h1>{{ obj.get_full_name|default:obj.username }}
+      {% if obj.is_active %}<span class="badge text-bg-success fs-6 align-middle">Active</span>{% else %}<span class="badge text-bg-secondary fs-6 align-middle">Inactive</span>{% endif %}</h1>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-primary" href="{% url 'accounts:user_edit' obj.pk %}"><i class="bi bi-pencil me-1"></i>Edit</a>
+    <a class="btn btn-outline-primary" href="{% url 'accounts:user_set_password' obj.pk %}"><i class="bi bi-key me-1"></i>Reset password</a>
+    {% if obj != user %}
+    <form method="post" action="{% url 'accounts:user_toggle_active' obj.pk %}" data-confirm="{% if obj.is_active %}Deactivate this account? The user will no longer be able to sign in.{% else %}Re-activate this account?{% endif %}">{% csrf_token %}
+      <button class="btn {% if obj.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}" type="submit">{% if obj.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-5"><div class="card"><div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-5">Username</dt><dd class="col-7">{{ obj.username }}</dd>
+      <dt class="col-5">Email</dt><dd class="col-7">{{ obj.email|default:"—" }}</dd>
+      <dt class="col-5">Role</dt><dd class="col-7">{{ obj.profile.get_role_display }}{% if obj.is_superuser %} <span class="badge text-bg-dark">superuser</span>{% endif %}</dd>
+      <dt class="col-5">Department</dt><dd class="col-7">{{ obj.profile.department|default:"—" }}</dd>
+      <dt class="col-5">Location</dt><dd class="col-7">{{ obj.profile.location|default:"—" }}</dd>
+      <dt class="col-5">Job title</dt><dd class="col-7">{{ obj.profile.job_title|default:"—" }}</dd>
+      <dt class="col-5">Phone / ext.</dt><dd class="col-7">{{ obj.profile.phone|default:"—" }}{% if obj.profile.extension %} / {{ obj.profile.extension }}{% endif %}</dd>
+      <dt class="col-5">Joined</dt><dd class="col-7">{{ obj.date_joined|date:"d M Y" }}</dd>
+      <dt class="col-5">Last sign-in</dt><dd class="col-7">{{ obj.last_login|date:"d M Y H:i"|default:"Never" }}</dd>
+      <dt class="col-5">Password</dt><dd class="col-7">{% if obj.profile.must_change_password %}<span class="badge text-bg-warning">Must change at next sign-in</span>{% else %}Set by user{% endif %}</dd>
+    </dl>
+  </div></div></div>
+  <div class="col-lg-7"><div class="card"><div class="card-header bg-white">Recent account history</div>
+    <ul class="list-group list-group-flush">
+      {% for e in history %}
+        <li class="list-group-item small"><span class="text-muted">{{ e.timestamp|date:"d M Y H:i" }}</span> · <strong>{{ e.get_action_display }}</strong> by {{ e.actor_username|default:"system" }}{% if e.message %} — {{ e.message }}{% endif %}</li>
+      {% empty %}<li class="list-group-item text-muted">No recorded events.</li>{% endfor %}
+    </ul>
+  </div></div>
+</div>
+{% endblock %}

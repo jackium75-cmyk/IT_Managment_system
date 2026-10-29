@@ -1,0 +1,4 @@
+<div class="table-responsive"><table class="table table-sm mb-0 small"><thead><tr><th>Cur.</th><th class="text-end">Estimated</th><th class="text-end" title="Approved purchase requests">Approved</th><th class="text-end" title="Delivered purchases plus other recorded costs">Actual</th></tr></thead>
+  <tbody>{% for cur, c in costs.items %}<tr><td>{{ cur }}</td><td class="text-end">{{ c.estimated|default:"—" }}</td><td class="text-end">{{ c.approved }}</td><td class="text-end">{{ c.actual }}{% if c.other %}<div class="text-muted">incl. {{ c.other }} other</div>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="4" class="text-muted">No costs recorded.</td></tr>{% endfor %}</tbody></table></div>
+<p class="small text-muted px-2 pt-1 mb-1">Approved = approved purchase requests. Actual = delivered purchases + other recorded costs.</p>

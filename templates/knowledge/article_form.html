@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{% if article %}Edit article{% else %}New knowledge article{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header mb-3">
+  <nav aria-label="breadcrumb"><ol class="breadcrumb mb-1"><li class="breadcrumb-item"><a href="{% url 'knowledge:list' %}">Knowledge base</a></li></ol></nav>
+  <h1>{% if article %}Edit: {{ article.title }}{% else %}Document a problem and its solution{% endif %}</h1>
+  {% if source %}<p class="text-muted mb-0">Pre-filled from ticket <a href="{{ source.get_absolute_url }}">{{ source.reference }}</a>. Remove personal or guest details before publishing.</p>{% endif %}
+</div>
+<form method="post" novalidate>{% csrf_token %}
+  {% if source %}<input type="hidden" name="source_ticket" value="{{ source.pk }}">{% endif %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+  <div class="row g-3">
+    <div class="col-xl-4"><div class="card h-100"><div class="card-header bg-white">Classification</div><div class="card-body">
+      {% include "includes/field.html" with field=form.title %}{% include "includes/field.html" with field=form.status %}
+      {% include "includes/field.html" with field=form.category %}{% include "includes/field.html" with field=form.asset_category %}
+      {% include "includes/field.html" with field=form.error_codes %}{% include "includes/field.html" with field=form.keywords %}
+    </div></div></div>
+    <div class="col-xl-8"><div class="card"><div class="card-header bg-white">Troubleshooting record</div><div class="card-body"><div class="row">
+      <div class="col-md-6">{% include "includes/field.html" with field=form.problem %}</div>
+      <div class="col-md-6">{% include "includes/field.html" with field=form.symptoms %}</div>
+      <div class="col-md-6">{% include "includes/field.html" with field=form.possible_causes %}</div>
+      <div class="col-md-6">{% include "includes/field.html" with field=form.diagnostics %}</div>
+      <div class="col-12">{% include "includes/field.html" with field=form.commands %}</div>
+      <div class="col-md-6">{% include "includes/field.html" with field=form.parts_replaced %}</div>
+      <div class="col-md-6">{% include "includes/field.html" with field=form.root_cause %}</div>
+      <div class="col-12">{% include "includes/field.html" with field=form.solution %}</div>
+      <div class="col-md-6">{% include "includes/field.html" with field=form.verification %}</div>
+      <div class="col-md-6">{% include "includes/field.html" with field=form.prevention %}</div>
+    </div></div></div></div>
+  </div>
+  <div class="mt-3 d-flex gap-2"><button class="btn btn-primary">Save</button><a class="btn btn-outline-secondary" href="{% if article %}{{ article.get_absolute_url }}{% else %}{% url 'knowledge:list' %}{% endif %}">Cancel</a></div>
+</form>
+{% endblock %}
