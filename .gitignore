@@ -3,12 +3,13 @@ __pycache__/
 .env
 .venv/
 venv/
-db.sqlite3
-logs/*.log*
-media_private/*
-!media_private/.gitkeep
-staticfiles/
-backups/
+/db.sqlite3
+/logs/*.log*
+/media_private/*
+!/media_private/.gitkeep
+/staticfiles/
+# Backup data folder only (not the apps/backups code)
+/backups/
 # Left by restore_backup until checked and deleted
-media_private.before-restore-*/
-media_private.restoring-*/
+/media_private.before-restore-*/
+/media_private.restoring-*/

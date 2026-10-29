@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Backups{% endblock %}
+{% block extra_head %}{% if running %}<meta http-equiv="refresh" content="10">{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between gap-2 align-items-end mb-3">
+  <div><h1>Backups</h1>
+    <p class="text-muted small mb-0">Each backup holds the whole database and every uploaded file, with SHA-256 fingerprints. Backups are never downloadable from this page: they contain all records and password hashes.</p></div>
+  <form method="post" action="{% url 'backups:run' %}" class="no-print">{% csrf_token %}
+    <button class="btn btn-primary" {% if h.busy %}disabled{% endif %}><i class="bi bi-cloud-arrow-up"></i> Back up now</button></form>
+</div>
+
+{% if h.overdue %}
+<div class="alert alert-danger"><i class="bi bi-exclamation-octagon"></i>
+  {% if h.last %}The last successful backup was {{ h.last.started_at|naturaltime }}.{% else %}No successful backup has been made yet.{% endif %}
+  Check that the nightly <strong>HotelIT Backup</strong> scheduled task is running (see <em>docs/BACKUP_AND_RESTORE.md</em>).</div>
+{% endif %}
+{% if running %}<div class="alert alert-info"><span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>A backup or verification is running. This page refreshes every 10 seconds.</div>{% endif %}
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+    <div class="small text-muted">Last successful backup</div>
+    <div class="fs-5 fw-semibold">{% if h.last %}{{ h.last.started_at|date:"d M Y H:i" }}{% else %}Never{% endif %}</div>
+    {% if h.last %}<div class="small text-muted">{{ h.last.started_at|naturaltime }}</div>{% endif %}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+    <div class="small text-muted">Last verified backup</div>
+    <div class="fs-5 fw-semibold">{% if h.last_verified %}{{ h.last_verified.started_at|date:"d M Y H:i" }}{% else %}None{% endif %}</div>
+    <div class="small text-muted">Test-restored and every fingerprint checked</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+    <div class="small text-muted">Backup folder</div>
+    <div class="small text-break fw-semibold">{{ h.root }}</div>
+    {% if h.free is not None %}<div class="small text-muted">{{ h.free|filesizeformat }} free of {{ h.total|filesizeformat }}</div>{% endif %}</div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+    <div class="small text-muted">Second copy</div>
+    {% if h.copy_to %}<div class="small text-break fw-semibold">{{ h.copy_to }}</div>
+    {% else %}<div class="small fw-semibold text-warning">Not configured</div><div class="small text-muted">Set BACKUP_COPY_TO so a disk failure cannot take the backups with it.</div>{% endif %}</div></div></div>
+</div>
+
+<div class="card mb-3"><div class="card-header bg-white">History <span class="small text-muted">· keeps the newest {{ h.keep_daily }}, the newest of each of the last {{ h.keep_monthly }} months, and the newest verified backup</span></div>
+<div class="table-responsive"><table class="table table-sm align-middle mb-0">
+  <thead><tr><th>Started</th><th>Type</th><th>Result</th><th>File</th><th class="text-end">Size</th><th>Verification</th><th></th></tr></thead>
+  <tbody>
+  {% for r in page_obj %}
+    <tr>
+      <td class="text-nowrap">{{ r.started_at|date:"d M Y H:i" }}{% if r.triggered_by %}<div class="small text-muted">{{ r.triggered_by.get_full_name|default:r.triggered_by.username }}</div>{% endif %}</td>
+      <td class="small">{{ r.get_kind_display }}</td>
+      <td><span class="badge {% if r.status == 'success' %}text-bg-success{% elif r.status == 'failed' %}text-bg-danger{% elif r.status == 'running' %}text-bg-info{% else %}text-bg-light border{% endif %}">{{ r.get_status_display }}</span>
+        {% if r.message %}<div class="small text-muted" style="white-space: pre-line;">{{ r.message }}</div>{% endif %}
+        {% if r.copied_to %}<div class="small text-success"><i class="bi bi-check2"></i> Copied to second location</div>{% endif %}
+        {% if r.copy_error %}<div class="small text-danger">{{ r.copy_error }}</div>{% endif %}</td>
+      <td class="small text-break">{{ r.file_name|default:"—" }}{% if r.sha256 %}<div class="text-muted font-monospace" title="SHA-256">{{ r.sha256|truncatechars:20 }}</div>{% endif %}</td>
+      <td class="text-end small text-nowrap">{% if r.size_bytes %}{{ r.size_bytes|filesizeformat }}{% else %}—{% endif %}</td>
+      <td><span class="badge {% if r.verify_status == 'ok' %}text-bg-success{% elif r.verify_status == 'failed' %}text-bg-danger{% elif r.verify_status == 'running' %}text-bg-info{% else %}text-bg-light border{% endif %}">{{ r.get_verify_status_display }}</span>
+        {% if r.verified_at and r.verify_status != 'running' %}<div class="small text-muted">{{ r.verified_at|date:"d M Y H:i" }}</div>{% endif %}
+        {% if r.verify_message %}<details class="small"><summary>Details</summary><div style="white-space: pre-line;">{{ r.verify_message }}</div></details>{% endif %}</td>
+      <td class="text-end">{% if r.status == 'success' %}<form method="post" action="{% url 'backups:verify' r.pk %}">{% csrf_token %}
+        <button class="btn btn-sm btn-outline-secondary text-nowrap" {% if h.busy %}disabled{% endif %}>Verify</button></form>{% endif %}</td>
+    </tr>
+  {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No backups yet.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% include "includes/pagination.html" %}
+
+<div class="card"><div class="card-header bg-white">Restoring a backup</div><div class="card-body small">
+  <p>Restoring replaces <strong>all</strong> current data, so it is done on the server, not from this page:</p>
+  <ol class="mb-2">
+    <li>Stop the <em>HotelIT Server</em>, <em>HotelIT Jobs</em> and <em>HotelIT Backup</em> scheduled tasks.</li>
+    <li>In PowerShell, in the application folder: <code>.\.venv\Scripts\python.exe manage.py restore_backup &lt;file name&gt;</code></li>
+    <li>The backup is verified first and a safety backup of the current state is made automatically. Type <code>RESTORE</code> to confirm.</li>
+    <li>Start the scheduled tasks again and check a few recent records.</li>
+  </ol>
+  <p class="mb-0 text-muted">Full procedure, including restoring onto a new server: <em>docs/BACKUP_AND_RESTORE.md</em>.</p>
+</div></div>
+{% endblock %}
